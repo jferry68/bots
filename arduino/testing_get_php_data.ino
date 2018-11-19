@@ -2,6 +2,7 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 
+const char* url = "https://raw.githubusercontent.com/jferry68/bots/master/LYNGOH.json";
 const char* ssid = "JKFERRY2";
 const char* password = "f3rryl1nk";
 
@@ -26,7 +27,7 @@ void loop() {
 
     HTTPClient http;
 
-    http.begin("https://raw.githubusercontent.com/jferry68/bots/master/LYNGOH.json"); //Specify the URL
+    http.begin(url); //Specify the URL
     int httpCode = http.GET();                            //Make the request
 
     if (httpCode > 0) { //Check for the returning code
@@ -37,7 +38,9 @@ void loop() {
 
         // convert the GET response body into a character array
         // json file so far  {"Akick":"0", "Bkick":"1" }
-        char JSONMessage[] = payload;
+        //TODO: figure out how to convert a string into a JSONMessage array
+        //char JSONMessage[] = {0};
+        char JSONMessage[] = http.getString();
         /// need a buffer for the parser
         StaticJsonBuffer<300> JSONBuffer;
         JsonObject& parsed = JSONBuffer.parseObject(JSONMessage);
