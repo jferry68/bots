@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+
 //set up global variables
 String JKF_wifissid = "JKFERRY2";  //JOEFERRY wi-fi in Seattle
 String JKF_wifipw = "f3rryl1nk";
@@ -9,7 +10,7 @@ String TFW_wifipw = "Wallace_PW";
 String TFP_wifissid = "Engenius";  //TOMFERRY wi-fi in Phoenix
 String TFP_wifipw = "tinker18";
 const char* url = "https://raw.githubusercontent.com/jferry68/bots/master/LYNGOH.json";
-const char* CONTROLSTRING = "Aa0Ak0As0Ae0Ba0Bk0Bs0Be0";
+//CONTROLSTRING format from LYNGOH.json looks like {Aa0Ak0As0Ae0Ba0Bk0Bs0Be0}
 
 //Define pin numbers to be used
 int WIFILIGHT_PIN = 13;
@@ -33,19 +34,31 @@ void setup() {
   delay(5000);
 
   while ((!(WiFi.status() == WL_CONNECTED))) {
-    Serial.println("Trying to connect to TFW Wi-Fi");
-    WiFi.begin("TFW_wifissid", "TFW_wifipw");
-    delay(5000);
-    Serial.println("Trying to connect to TFP Wi-Fi");
-    WiFi.begin("TFP_wifissid", "TFP_wifipw");
-    delay(5000);
-    Serial.println("Trying to connect to JKF Wi-Fi");
+    if (!(WiFi.status() == WL_CONNECTED)) {
     WiFi.begin("JKFERRY2", "f3rryl1nk");
+    Serial.println("Trying JKFERRY2...");
     delay(5000);
+    }
+    else if (!(WiFi.status() == WL_CONNECTED)) {
+    WiFi.begin("TFW_wifissid", "TFW_wifipw");
+    Serial.println("Trying TFW_wifissid...");
+    delay(5000);
+    }
+    else if (!(WiFi.status() == WL_CONNECTED)) {
+    WiFi.begin("TFP_wifissid", "TFP_wifipw");
+    Serial.println("Trying TFP_wifissid...");
+    delay(5000);
+    }
+    else
+    {
+    Serial.println("Error Connecting to Wi-Fi network");
+    }
   }
+  
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("Connected to Wi-Fi network");
+    Serial.println("Connected to Wi-Fi network ");
     Serial.print((WiFi.SSID()));
+    Serial.println(" ");
     digitalWrite(WIFILIGHT_PIN, HIGH);
   }
   else {
@@ -65,10 +78,20 @@ void loop()
 
     if (httpCode > 0) {                                   //Check for the returning code
 
-      String payload = http.getString();
-      Serial.println(httpCode);
-      Serial.println(payload);
+      String CONTROLSTRING = http.getString();
+      Serial.println(CONTROLSTRING);
+      parseCommand(CONTROLSTRING);
       delay(5000);
     }
   }
-}  
+void parseCommand(String com)
+    // {Aa1Ak2As3Ae4Ba5Bk6Bs7Be8}
+    String Aarm;
+    String Akick;
+
+    int Aarm = com.substring(3,3)
+    int Akick = com.substring(6,6)
+
+    int total = Aarm + Akick;  //check to see that these are really integers converted from string
+    Serial.println(total);
+}
