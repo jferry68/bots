@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-//set up global variables
+//Set up global variables
 String JKF_wifissid = "JKFERRY2";  //JOEFERRY wi-fi in Seattle
 String JKF_wifipw = "f3rryl1nk";
 String TFW_wifissid = "BigHoops";  //TOMFERRY wi-fi in Wallace
