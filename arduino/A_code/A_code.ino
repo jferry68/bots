@@ -10,7 +10,7 @@ String TFW_wifipw = "Wallace_PW";
 String TFP_wifissid = "Engenius";  //TOMFERRY wi-fi in Phoenix
 String TFP_wifipw = "tinker18";
 const char* url = "https://raw.githubusercontent.com/jferry68/bots/master/LYNGOH.json";
-//CONTROLSTRING format from LYNGOH.json looks like {Aa0Ak0As0Ae0Ba0Bk0Bs0Be0}
+//CONTROLSTRING format from LYNGOH.json looks like {Aa1Ak2As3Ae4Ba5Bk6Bs7Be8}
 
 //Define pin numbers to be used
 int WIFILIGHT_PIN = 13;
@@ -80,18 +80,16 @@ void loop()
 
       String CONTROLSTRING = http.getString();
       Serial.println(CONTROLSTRING);
-      parseCommand(CONTROLSTRING);
+      Serial.println(total);
       delay(5000);
-    }
-  }
-void parseCommand(String com)
-    // {Aa1Ak2As3Ae4Ba5Bk6Bs7Be8}
-    String Aarm;
-    String Akick;
 
-    int Aarm = com.substring(3,3)
-    int Akick = com.substring(6,6)
+    //int Aarm;
+    //int Akick;
+    //Aarm = com.substring(3,3)
+    //Akick = com.substring(6,6)
 
-    int total = Aarm + Akick;  //check to see that these are really integers converted from string
-    Serial.println(total);
-}
+    //int total = Aarm + Akick;  //check to see that these are really integers converted from string
+    //Serial.println(total);
+     }
+   }
+ }

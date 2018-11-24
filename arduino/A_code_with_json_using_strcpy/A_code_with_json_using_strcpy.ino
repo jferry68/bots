@@ -77,7 +77,7 @@ void loop() {
       String input = http.getString();
 
       String control(String &input);
-        char json[input.length()]; // Create a char array big enough including the terminating NULL
+        char json[input.length +1()]; // Create a char array big enough including the terminating NULL
         strcpy(json, input.c_str()); // Place incoming route in char array
       
         //char json[] = http.getString();
