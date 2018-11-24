@@ -1,16 +1,15 @@
+#include <ArduinoJson.h>
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-//Set up global variables
-String JKF_wifissid = "JKFERRY2";  //JOEFERRY wi-fi in Seattle
-String JKF_wifipw = "f3rryl1nk";
-String TFW_wifissid = "BigHoops";  //TOMFERRY wi-fi in Wallace
-String TFW_wifipw = "Wallace_PW";
-String TFP_wifissid = "Engenius";  //TOMFERRY wi-fi in Phoenix
-String TFP_wifipw = "tinker18";
+//possible wifi connections
+//"JKFERRY2" "f3rryl1nk"
+//"bighoops" "123babe123"
+//"Engenius" "tinker18"
+
 const char* url = "https://raw.githubusercontent.com/jferry68/bots/master/LYNGOH.json";
-//CONTROLSTRING format from LYNGOH.json looks like {Aa1Ak2As3Ae4Ba5Bk6Bs7Be8}
+//test string in LYNGOH.json is "{\"Aarm\":0,\"Akick\":1,\"Aservo\":2,\"Aerror\":3,\"Barm\":4,\"Bkick\":5,\"Bservo\":6,\"Berror\":7}"
 
 //Define pin numbers to be used
 int WIFILIGHT_PIN = 13;
@@ -19,6 +18,7 @@ int GRLIGHT_PIN = 17;
 int Motion_PIN = 16;
 int KICKBTN_PIN = 15;
 int ARMBTN_PIN = 26;
+
 
 void setup() {
 
@@ -30,66 +30,74 @@ void setup() {
   pinMode(Motion_PIN, INPUT);
   pinMode(KICKBTN_PIN, INPUT);
   pinMode(ARMBTN_PIN, INPUT);
-  Serial.begin(115200);  // Set baud rate for Serial Monitor
+  Serial.begin(115200);
+
+  // Set WiFi to station mode and disconnect from an AP if it was previously connected
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  delay(1000);
+
+  WiFi.begin("Engenius", "tinker18");
+  Serial.print("Trying to connect to ");
+  Serial.println("Engenius");
   delay(5000);
 
-  while ((!(WiFi.status() == WL_CONNECTED))) {
-    if (!(WiFi.status() == WL_CONNECTED)) {
-    WiFi.begin("JKFERRY2", "f3rryl1nk");
-    Serial.println("Trying JKFERRY2...");
+  if (WiFi.status() != WL_CONNECTED) {
+    WiFi.begin("bighoops", "123babe123");
+    Serial.print("Trying to connect to ");
+    Serial.println("bighoops");
     delay(5000);
-    }
-    else if (!(WiFi.status() == WL_CONNECTED)) {
-    WiFi.begin("TFW_wifissid", "TFW_wifipw");
-    Serial.println("Trying TFW_wifissid...");
-    delay(5000);
-    }
-    else if (!(WiFi.status() == WL_CONNECTED)) {
-    WiFi.begin("TFP_wifissid", "TFP_wifipw");
-    Serial.println("Trying TFP_wifissid...");
-    delay(5000);
-    }
-    else
-    {
-    Serial.println("Error Connecting to Wi-Fi network");
-    }
   }
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("Connected to Wi-Fi network ");
-    Serial.print((WiFi.SSID()));
-    Serial.println(" ");
-    digitalWrite(WIFILIGHT_PIN, HIGH);
-  }
+
   else {
-    Serial.println("Error Connecting to Wi-Fi network");
-    digitalWrite(WIFILIGHT_PIN, LOW);
+    Serial.println("Failed to connect to wifi");
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("Connected to wifi");
+    Serial.println(WiFi.SSID());
+    digitalWrite(WIFILIGHT_PIN, HIGH);
+    delay(3000);
   }
 }
 
-void loop()
-{
-  if ((WiFi.status() == WL_CONNECTED)) { //Check the current connection status
+
+void loop() {
+
+  if ((WiFi.status() == WL_CONNECTED)) {                  //Check the current connection status
 
     HTTPClient http;
 
-    http.begin(url); //Specify the URL
+    http.begin(url);                                      //url address defined above in global variables
     int httpCode = http.GET();                            //Make the request
 
     if (httpCode > 0) {                                   //Check for the returning code
 
-      String CONTROLSTRING = http.getString();
-      Serial.println(CONTROLSTRING);
-      Serial.println(total);
+      String input = http.getString();
+      // Create a char array big enough including the terminating NULL
+      int bufLength = input.length() + 1;
+      char json[bufLength];
+      input.toCharArray(json, bufLength);
+
+      //char json[] = "{\"Aarm\":0,\"Akick\":1,\"Aservo\":2,\"Aerror\":3,\"Barm\":4,\"Bkick\":5,\"Bservo\":6,\"Berror\":7}";
+      Serial.println(json);
       delay(5000);
 
-    //int Aarm;
-    //int Akick;
-    //Aarm = com.substring(3,3)
-    //Akick = com.substring(6,6)
+      StaticJsonBuffer<200> jsonBuffer;
+      //DynamicJsonBuffer jsonBuffer;
 
-    //int total = Aarm + Akick;  //check to see that these are really integers converted from string
-    //Serial.println(total);
-     }
-   }
- }
+      JsonObject& root = jsonBuffer.parseObject(json);
+
+      if (!root.success()) {                            //Check for errors in parsing
+        Serial.println("Parsing failed");
+        delay(5000);
+        return;
+      }
+
+      int Bkickval = root["Bkick"];
+      Serial.println(Bkickval);         //testing the extraction of one of the root arrays. should give a 5
+      delay(5000);
+    }
+   http.end();
+  }
+}
