@@ -69,36 +69,35 @@ void loop() {
     HTTPClient http;
 
     http.begin(url);                                      //url address defined above in global variables
-    //int httpCode = http.GET();                            //Make the request
-    char httpCode = http.GET();                            //Make the request
+    int httpCode = http.GET();                            //Make the request
 
     if (httpCode > 0) {                                   //Check for the returning code
 
       String input = http.getString();
+      // Create a char array big enough including the terminating NULL
+      int bufLength = input.length() + 1;
+      char json[bufLength];
+      input.toCharArray(json, bufLength);
 
-      String control(String &input);
-        char json[input.length() +1]; // Create a char array big enough including the terminating NULL
-        strcpy(json, input.c_str()); // Place incoming route in char array
-      
-        //char json[] = http.getString();
-        //char json[] = "{\"Aarm\":0,\"Akick\":1,\"Aservo\":2,\"Aerror\":3,\"Barm\":4,\"Bkick\":5,\"Bservo\":6,\"Berror\":7}";
-        Serial.println(json);
+      //char json[] = "{\"Aarm\":0,\"Akick\":1,\"Aservo\":2,\"Aerror\":3,\"Barm\":4,\"Bkick\":5,\"Bservo\":6,\"Berror\":7}";
+      Serial.println(json);
+      delay(5000);
+
+      StaticJsonBuffer<200> jsonBuffer;
+      //DynamicJsonBuffer jsonBuffer;
+
+      JsonObject& root = jsonBuffer.parseObject(json);
+
+      if (!root.success()) {                            //Check for errors in parsing
+        Serial.println("Parsing failed");
         delay(5000);
-
-        StaticJsonBuffer<200> jsonBuffer;
-        //DynamicJsonBuffer jsonBuffer;
-
-        JsonObject& root = jsonBuffer.parseObject(json);
-
-        if (!root.success()) {                            //Check for errors in parsing
-          Serial.println("Parsing failed");
-          delay(5000);
-          return;
-        }
-
-        int Bkickval = root["Bkick"];
-        Serial.println(Bkickval);         //testing the extraction of one of the root arrays. should give a 5
-        delay(5000);
+        return;
       }
+
+      int Bkickval = root["Bkick"];
+      Serial.println(Bkickval);         //testing the extraction of one of the root arrays. should give a 5
+      delay(5000);
     }
+   http.end();
   }
+}
