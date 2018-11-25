@@ -9,7 +9,7 @@
 //"Engenius" "tinker18"
 
 const char* url = "https://raw.githubusercontent.com/jferry68/bots/master/LYNGOH.json";
-//test string in LYNGOH.json is "{\"Aarm\":0,\"Akick\":1,\"Aservo\":2,\"Aerror\":3,\"Barm\":4,\"Bkick\":5,\"Bservo\":6,\"Berror\":7}"
+//test string in LYNGOH.json is {"Aarm":0,"Akick":1,"Aservo":2,"Aerror":3,"Barm":4,"Bkick":5,"Bservo":6,"Berror":7}
 
 //Define pin numbers to be used
 int WIFILIGHT_PIN = 13;
@@ -79,7 +79,7 @@ void loop() {
       char json[bufLength];
       input.toCharArray(json, bufLength);
 
-      //char json[] = "{\"Aarm\":0,\"Akick\":1,\"Aservo\":2,\"Aerror\":3,\"Barm\":4,\"Bkick\":5,\"Bservo\":6,\"Berror\":7}";
+      //char json[] = {"Aarm":0,"Akick":1,"Aservo":2,"Aerror":3,"Barm":4,"Bkick":5,"Bservo":6,"Berror":7}
       Serial.println(json);
       delay(5000);
 
@@ -97,7 +97,21 @@ void loop() {
       int Bkickval = root["Bkick"];
       Serial.println(Bkickval);         //testing the extraction of one of the root arrays. should give a 5
       delay(5000);
+
+                                        //update values in array, eventually done through logic tests
+      root["Aarm"] = 7;
+      root["Akick"] = 6;
+      root["Aservo"] = 5;
+      root["Aerror"] = 4;
+      root["Barm"] = 3;
+      root["Bkick"] = 2;
+      root["Bservo"] = 1;
+      root["Berror"] = 0;
+
+      root.printTo(Serial);            //prints entire array to serial
+                                       //need to create an output string from array
+                                       //then put string back to LYNGOH.json
     }
-   http.end();
+    http.end();
   }
 }
