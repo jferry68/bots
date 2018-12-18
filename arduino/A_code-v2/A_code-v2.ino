@@ -41,7 +41,7 @@ void setup() {
   Serial.begin(115200);
   pinMode(ARMBTN_PIN, INPUT);
   pinMode(KICKBTN_PIN, INPUT);
-  pinMode(motionSensor, INPUT);
+  pinMode(Motion_PIN, INPUT);
   pinMode(REDLIGHT_PIN, OUTPUT);
   pinMode(GRLIGHT_PIN, OUTPUT);
   pinMode(led, OUTPUT);
@@ -170,7 +170,7 @@ void handleEvents(JsonObject root) {
 
   }
   if (root["Aservo"] == 1 && digitalRead(Motion_PIN) == HIGH) {
-    runServo()
+    runServo(root);
   }
   
   if (root["Berror"] == 1) {
@@ -194,7 +194,7 @@ void handleEvents(JsonObject root) {
   }
 }
 
-  void runServo() {
+  void runServo(JsonObject root) {
     servo_14.attach(14);
     servo_14.write(150);
     delay(500);
