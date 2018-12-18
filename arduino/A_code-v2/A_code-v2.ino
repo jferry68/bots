@@ -31,8 +31,8 @@ Servo servo_14;
 int REDLIGHT_PIN = 18;
 int GRLIGHT_PIN = 17;
 int Motion_PIN = 16;
-int KICKBTN_PIN = 15;
-int ARMBTN_PIN = 26;
+int KICKBTN_PIN = 34;  //testing new pin
+int ARMBTN_PIN = 35;  //testing new pin
 
 WiFiMulti wifiMulti;
 HTTPClient http;
@@ -138,15 +138,15 @@ void handleEvents(JsonObject root) {
   } else {
     digitalWrite(GRLIGHT_PIN, LOW);
   }
-  
+  Serial.println(analogRead(KICKBTN_PIN));
   if (analogRead(KICKBTN_PIN) > 4000 && root["Barm"] == 1) {
     if (root["Berror"] == 0) {
       root["Akick"] = 1;
-      Serial.println("Button has been pushed");
+      Serial.println("Self button has been pushed");
       delay(1000);
     }
   }
-  
+
   if (analogRead(ARMBTN_PIN) > 4000) {
     root["Aarm"] = 1;
     Serial.println("Self arm is up");
@@ -169,7 +169,7 @@ void handleEvents(JsonObject root) {
     Serial.println("B sent message for A to queue a kick");
 
   }
-  if (root["Aservo"] == 1 && digitalRead(Motion_PIN) == HIGH) {
+  if (root["Aservo"] == 1 && digitalRead(Motion_PIN) == HIGH) {   //run servo if both true
     runServo(root);
   }
   
@@ -195,6 +195,7 @@ void handleEvents(JsonObject root) {
 }
 
   void runServo(JsonObject root) {
+  if (analogRead(ARMBTN_PIN) > 4000) {
     servo_14.attach(14);
     servo_14.write(150);
     delay(500);
@@ -202,8 +203,8 @@ void handleEvents(JsonObject root) {
     Serial.println("Self servo has run");
     root["Aservo"] = 0;
     delay(3000);
-    
-    if (digitalRead(ARMBTN_PIN) == 1) {
+  }  
+    if (analogRead(ARMBTN_PIN) > 4000) {
       root["Aerror"] = 1;
       Serial.println("Self servo has failed to kick or self robot didnt fall ");
     } else {
