@@ -140,7 +140,7 @@ void handleEvents(JsonObject root) {
   }
 
     if (analogRead(KICKBTN_PIN) < 4000 && root["Barm"] == 0) {
-    if (root["Berror"] == 0) && root["Bservo"] == 0{
+    if (root["Berror"] == 0 && root["Bservo"] == 0) {
       root["Akick"] = 0;
       digitalWrite(REDLIGHT_PIN, LOW);
       digitalWrite(GRLIGHT_PIN, LOW);
@@ -167,7 +167,7 @@ void handleEvents(JsonObject root) {
     Serial.println("Self arm is down");
   }
   
-  if (analogRead(ARMBTN_PIN) < 4000) && root["Aservo"] == 0)  {
+  if (analogRead(ARMBTN_PIN) < 4000 && root["Aservo"] == 0)  {
     root["Aerror"] = 0;
     digitalWrite(REDLIGHT_PIN, LOW);
     Serial.println("no self error or error is cleared"); 
@@ -212,11 +212,11 @@ void handleEvents(JsonObject root) {
       digitalWrite(GRLIGHT_PIN, HIGH);
       delay(250);
     }
+  }
     else {
     digitalWrite(GRLIGHT_PIN, LOW);
   }
  }
-}
 
   void runServo(JsonObject root) {
   if (analogRead(ARMBTN_PIN) > 4000) {
