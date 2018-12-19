@@ -213,9 +213,6 @@ void handleEvents(JsonObject root) {
       delay(250);
     }
   }
-    else {
-    digitalWrite(GRLIGHT_PIN, LOW);
- }
 }
 
   void runServo(JsonObject root) {
