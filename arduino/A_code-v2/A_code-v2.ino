@@ -138,7 +138,7 @@ void handleEvents(JsonObject root) {
   } else {
     digitalWrite(GRLIGHT_PIN, LOW);
   }
-  Serial.println(analogRead(KICKBTN_PIN));
+  
   if (analogRead(KICKBTN_PIN) > 4000 && root["Barm"] == 1) {
     if (root["Berror"] == 0) {
       root["Akick"] = 1;
@@ -153,6 +153,14 @@ void handleEvents(JsonObject root) {
     delay(1000);
 
   }
+  
+  if (analogRead(ARMBTN_PIN) < 4000) && root["Aservo"] == 0)  {
+    root["Aerror"] = 0;
+    digitalWrite(REDLIGHT_PIN, LOW);
+    Serial.println("Self error is cleared"); 
+    delay(1000);
+  }
+  
   if (root["Akick"] == 1 && root["Bservo"] == 1) {
     digitalWrite(REDLIGHT_PIN, HIGH);
     Serial.println("B responded to kick command and queued to kick");
@@ -191,7 +199,10 @@ void handleEvents(JsonObject root) {
       digitalWrite(GRLIGHT_PIN, HIGH);
       delay(250);
     }
+    else {
+    digitalWrite(GRLIGHT_PIN, LOW);
   }
+ }
 }
 
   void runServo(JsonObject root) {
@@ -209,7 +220,7 @@ void handleEvents(JsonObject root) {
       Serial.println("Self servo has failed to kick or self robot didnt fall ");
     } else {
       root["Aarm"] = 0;
-      Serial.println("Self robot has fallen");
+      Serial.println("Self arm is down and robot has fallen");
    }
  }
 
