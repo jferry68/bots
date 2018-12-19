@@ -22,8 +22,8 @@ const char* PWDS[] = {
   "tinker18"
 };
 
-const char* url = "https://raw.githubusercontent.com/jferry68/bots/master/server/LYNGOH_Bposted.json";
-//test string in LYNGOH_Bposted.json is like {"Barm":0,"Bkick":0,"Bservo":0,"Berror":0}
+const char* url = "https://raw.githubusercontent.com/jferry68/bots/master/server/LYNGOH_Aposted.json";
+//test string in LYNGOH_Bposted.json is like {"Aarm":0,"Akick":0,"Aservo":0,"Aerror":0}
 
 //Define pin numbers to be used
 #define led 2          //onboard blue light
@@ -131,71 +131,71 @@ void loop() {
 void handleEvents(JsonObject root) {
   Serial.println("Handling events...");
 
-  if (root["Barm"] == 1) {
+  if (root["Aarm"] == 1) {
     digitalWrite(GRLIGHT_PIN, HIGH);
-    Serial.println("B arm is up");
+    Serial.println("A arm is up");
     delay(1000);
   } else {
     digitalWrite(GRLIGHT_PIN, LOW);
   }
 
-    if (analogRead(KICKBTN_PIN) < 4000 && root["Barm"] == 0) {
-    if (root["Berror"] == 0) && root["Bservo"] == 0{
-      root["Akick"] = 0;
+    if (analogRead(KICKBTN_PIN) < 4000 && root["Aarm"] == 0) {
+    if (root["Aerror"] == 0) && root["Aservo"] == 0{
+      root["Bkick"] = 0;
       digitalWrite(REDLIGHT_PIN, LOW);
       digitalWrite(GRLIGHT_PIN, LOW);
-      Serial.println("B reported back B kicked and B arm is down with no error");
+      Serial.println("A reported back A kicked and A arm is down with no error");
       delay(1000);
     }
   }
   
-  if (analogRead(KICKBTN_PIN) > 4000 && root["Barm"] == 1) {
-    if (root["Berror"] == 0) {
-      root["Akick"] = 1;
+  if (analogRead(KICKBTN_PIN) > 4000 && root["Aarm"] == 1) {
+    if (root["Aerror"] == 0) {
+      root["Bkick"] = 1;
       Serial.println("Self button has been pushed");
       delay(1000);
     }
   }
 
   if (analogRead(ARMBTN_PIN) > 4000) {
-    root["Aarm"] = 1;
+    root["Barm"] = 1;
     Serial.println("Self arm is up");
     delay(1000);
     }
       else {
-    root["Aarm"] = 0;
+    root["Barm"] = 0;
     Serial.println("Self arm is down");
   }
   
-  if (analogRead(ARMBTN_PIN) < 4000) && root["Aservo"] == 0)  {
-    root["Aerror"] = 0;
+  if (analogRead(ARMBTN_PIN) < 4000) && root["Bservo"] == 0)  {
+    root["Berror"] = 0;
     digitalWrite(REDLIGHT_PIN, LOW);
     Serial.println("no self error or error is cleared"); 
     delay(1000);
   }
   
-  if (root["Akick"] == 1 && root["Bservo"] == 1) {
+  if (root["Bkick"] == 1 && root["Aservo"] == 1) {
     digitalWrite(REDLIGHT_PIN, HIGH);
-    Serial.println("B responded to kick command and queued to kick");
+    Serial.println("A responded to kick command and queued to kick");
     delay(1000);
   }
   
-  if (root["Akick"] == 0 && root["Bservo"] == 0) {
+  if (root["Bkick"] == 0 && root["Aservo"] == 0) {
     digitalWrite(REDLIGHT_PIN, LOW);
-    Serial.println("B kick not queued or it completed successfully");
+    Serial.println("A kick not queued or it completed successfully");
 
   }
-  if (root["Bkick"] == 1) {
-    root["Aservo"] = 1;
-    Serial.println("B sent message for A to queue a kick");
+  if (root["Akick"] == 1) {
+    root["Bservo"] = 1;
+    Serial.println("A sent message for B to queue a kick");
 
   }
-  if (root["Aservo"] == 1 && digitalRead(Motion_PIN) == HIGH) {   //run servo if both true
+  if (root["Bservo"] == 1 && digitalRead(Motion_PIN) == HIGH) {   //run servo if both true
     runServo(root);
   }
   
-  if (root["Berror"] == 1) {
-    Serial.println("B servo has failed to kick or B robot didnt fall ");
+  if (root["Aerror"] == 1) {
+    Serial.println("A servo has failed to kick or A robot didnt fall ");
     for (int count = 0; count < 5; count++) {
       digitalWrite(REDLIGHT_PIN, LOW);
       delay(250);
@@ -204,7 +204,7 @@ void handleEvents(JsonObject root) {
     }
   }
   
-  if (root["Aerror"] == 1) {
+  if (root["Berror"] == 1) {
     Serial.println("Indicating self kick and robot error");
     for (int count = 0; count < 5; count++) {
       digitalWrite(GRLIGHT_PIN, LOW);
@@ -225,14 +225,14 @@ void handleEvents(JsonObject root) {
     delay(500);
     servo_14.write(5);
     Serial.println("Self servo has run");
-    root["Aservo"] = 0;
+    root["Bservo"] = 0;
     delay(3000);
   }  
     if (analogRead(ARMBTN_PIN) > 4000) {
-      root["Aerror"] = 1;
+      root["Berror"] = 1;
       Serial.println("Self servo has failed to kick or self robot didnt fall ");
     } else {
-      root["Aarm"] = 0;
+      root["Barm"] = 0;
       Serial.println("Self arm is down and robot has fallen");
    }
  }
@@ -242,8 +242,8 @@ void handleEvents(JsonObject root) {
 */
 void updateBotState(JsonObject root) {
   Serial.println("Updating bot state...");
-  //make sure to update LYNGOH_Aposted.json
-  
+  //make sure to update LYNGOH_Bposted.json
+
   
   //int Bkickval = root["Bkick"];
   //Serial.println(Bkickval);         //testing the extraction of one of the root arrays. should give a 5
