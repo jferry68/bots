@@ -7,30 +7,15 @@
 #include <WiFiClientSecure.h>
 #include <PubSubClient.h>
 
-// Update these with values suitable for your network.
-char ssid[] = "NETGEAR37";     // your network SSID (name)
-char pass[] = "gentleraven032";  // your network password
-int status  = WL_IDLE_STATUS;    // the Wifi radio's status
+const char* ssid     = "NETGEAR37";
+const char* password = "gentleraven032";
 
-// define possible wifi access points to connect to
-const char* SSIDS[] = {
-  "NETGEAR37",
-  "JKFERRY2",
-  "bighoops",
-  "Engenius"
-};
+const char* BROKER_USER = "ferr0084@gmail.com";
+const char* BROKER_PASS = "a966e133";
+const char* BROKER = "mqtt.dioty.co";
 
-// corresponding passwords for the wifi access points
-const char* PWDS[] = {
-  "gentleraven032",
-  "f3rryl1nk",
-  "123babe123",
-  "tinker18"
-};
-
-WiFiMulti wifiMulti;
-
-WiFiClientSecure wifiClient;
+//WiFiClientSecure wifiClient;
+WiFiClient wifiClient;
 PubSubClient client(wifiClient);
 
 #define THING_NAME "ameba"
@@ -176,7 +161,7 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect(clientId)) {
+    if (client.connect(clientId, BROKER_USER, BROKER_PASS)) {
       Serial.println("connected");
 
       for (int i=0; i<5; i++) {
@@ -200,34 +185,6 @@ void reconnect() {
   }
 }
 
-/**
-   add all the configured access points
-*/
-void setupWiFiAccessPoints() {
-  int i;
-  for (i = 0; i < 4; i++) {
-    Serial.print("Adding AP: ");
-    Serial.println(SSIDS[i]);
-    wifiMulti.addAP(SSIDS[i], PWDS[i]);
-  }
-}
-
-/**
-   Attempt to connect to one of the configured access points
-*/
-void initWiFiConnection() {
-  Serial.println("Connecting Wifi...");
-  if (wifiMulti.run() == WL_CONNECTED) {
-    Serial.println("");
-    Serial.print("AP: ");
-    Serial.println(WiFi.SSID());
-    Serial.print("IP: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("Failed to connect to wifi");
-  }
-}
-
 void setup()
 {
   Serial.begin(115200);
@@ -235,13 +192,22 @@ void setup()
   pinMode(led_pin, OUTPUT);
   digitalWrite(led_pin, led_state);
 
-  setupWiFiAccessPoints();
-  initWiFiConnection();
+  WiFi.begin(ssid, password);
 
-  wifiClient.setCACert(rootCABuff);
-  wifiClient.setCertificate(privateKeyBuff);
+  while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+      Serial.print(".");
+  }
 
-  client.setServer(mqttServer, 8883);
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+
+//  wifiClient.setCACert(rootCABuff);
+//  wifiClient.setCertificate(privateKeyBuff);
+
+  client.setServer(BROKER, 1883);
   client.setCallback(callback);
 
   // Allow the hardware to sort itself out
