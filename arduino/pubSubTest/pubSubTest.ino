@@ -27,6 +27,7 @@ void mySubCallBackHandler (char *topicName, int payloadLen, char *payLoad)
 void setup() {
     WiFi.disconnect(true);
     Serial.begin(115200);
+    
     while (status != WL_CONNECTED)
     {
         Serial.print("Attempting to connect to SSID: ");
@@ -68,12 +69,6 @@ int LED = 0;
 
 void loop() {
     
-    if(LED == 0){
-      LED = 1;
-    } else{
-      LED = 0;
-    }
-    
     if(msgReceived == 1)
     {
         msgReceived = 0;
@@ -83,10 +78,18 @@ void loop() {
     if(tick >= 5)   // publish to topic every 5seconds
     {
         tick=0;
+
+        if(LED == 0){
+          LED = 1;
+        } else{
+          LED = 0;
+        }
+    
         sprintf(payload, "{\"state\":{\"reported\":{\"led\":%d}},\"clientToken\":\"%s\"}",
           LED,
           CLIENT_ID
          );
+
         if(hornbill.publish(TOPIC_NAME,payload) == 0)
         {        
             Serial.print("Publish Message:");
