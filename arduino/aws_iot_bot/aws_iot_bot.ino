@@ -10,250 +10,231 @@ AWS_IOT AWS_CLIENT;
 
 int POLLING_DELAY = 5000;
 
-char WIFI_SSID[]="NETGEAR37";
-char WIFI_PASSWORD[]="gentleraven032";
-char HOST_ADDRESS[]="ac0pct10qk7h9-ats.iot.us-west-2.amazonaws.com";
-char CLIENT_ID[]= "amebaClient";
-char UPDATE_TOPIC[]= "$aws/things/UniBot/shadow/update";
-char GET_TOPIC[]= "$aws/things/UniBot/shadow/get";
-char* SUBSCRIBE_TOPICS[5] = {
-  "$aws/things/UniBot/shadow/update/accepted",
-  "$aws/things/UniBot/shadow/update/rejected",
-  "$aws/things/UniBot/shadow/update/delta",
-  "$aws/things/UniBot/shadow/get/accepted",
-  "$aws/things/UniBot/shadow/get/rejected"
+int ME = -1;
+int HIM = -1;
+char* MAC[2] = {
+  "3C:71:BF:84:B8:0C",
+  "mac:address:b"
+};
+char* BOT_NAME[2] = {
+  "BotA",
+  "BotB"
 };
 
+char WIFI_SSID[] = "NETGEAR37";
+char WIFI_PASSWORD[] = "gentleraven032";
+char HOST_ADDRESS[] = "ac0pct10qk7h9-ats.iot.us-west-2.amazonaws.com";
+char CLIENT_ID[] = "amebaClient";
+char* UPDATE_TOPIC[2] = {
+  "$aws/things/BotA/shadow/update",
+  "$aws/things/BotB/shadow/update"
+};
+char* GET_TOPIC[2] = {
+  "$aws/things/BotA/shadow/get",
+  "$aws/things/BotB/shadow/get"
+};
+//char* SUBSCRIBE_TOPICS_TMPL[] = {
+//  "$aws/things/%s/shadow/update/accepted",
+//  "$aws/things/%s/shadow/update/rejected",
+//  "$aws/things/%s/shadow/update/delta",
+//  "$aws/things/%s/shadow/get/accepted",
+//  "$aws/things/%s/shadow/get/rejected"
+//};
+char* SUBSCRIBE_TOPICS[2][2] =
+{
+  {
+    "$aws/things/BotA/shadow/update/accepted",
+    "$aws/things/BotA/shadow/update/rejected"
+  },
+  {
+    "$aws/things/BotB/shadow/update/accepted",
+    "$aws/things/BotB/shadow/update/rejected"
+  }
+};
+
+
 int status = WL_IDLE_STATUS;
-int tick=0,msgCount=0,msgReceived = 0;
+int tick = 0, msgCount = 0, msgReceived = 0;
 char payload[512];
 char rcvdPayload[512];
 char *payloadTopic;
+const char desiredStateFmt[] = "{\"state\":{\"desired\":{\"kick\":%i,\"arm\":%i,\"servo\":%i}}}";
 
-#define led 2          //onboard blue light
+const int led = 2;
 Servo servo_14;
-int REDLIGHT_PIN = 18;
-int GRLIGHT_PIN = 17;
-int Motion_PIN = 16;
-int KICKBTN_PIN = 34;
-int ARMBTN_PIN = 35;
+const int REDLIGHT_PIN = 18;
+const int GRLIGHT_PIN = 17;
+const int Motion_PIN = 16;
+const int KICKBTN_PIN = 34;
+const int ARMBTN_PIN = 35;
 
-void callBackHandler (char *topicName, int payloadLen, char *payLoad){
-    Serial.print("Callback received: ");
-    Serial.println(topicName);
-    payloadTopic = topicName;
-    strncpy(rcvdPayload,payLoad,payloadLen);
-    rcvdPayload[payloadLen] = 0;
-    msgReceived = 1;
+void registerMessage(char *topicName, int payloadLen, char *payLoad) {
+  Serial.println("Callback received:");
+  Serial.println(topicName);
+  Serial.println(payLoad);
+  payloadTopic = topicName;
+  strncpy(rcvdPayload, payLoad, payloadLen);
+  rcvdPayload[payloadLen] = 0;
+  msgReceived = 1;
 }
 
-boolean connectToWiFi(){
-  
-    while (status != WL_CONNECTED){
-        Serial.print("Attempting to connect to SSID: ");
-        Serial.println(WIFI_SSID);
-        // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-        status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-        // wait 5 seconds for connection:
-        delay(5000);
-    }
-
-    Serial.println("Connected to wifi");
-    return (status == WL_CONNECTED);
+void callBackHandler (char *topicName, int payloadLen, char *payLoad) {
+  Serial.println("Callback received:");
+  registerMessage(topicName, payloadLen, payLoad);
 }
 
-boolean connectToAWS(){
-  
-      if(0 == AWS_CLIENT.connect(HOST_ADDRESS,CLIENT_ID)){
-        Serial.println("Connected to AWS");
-        delay(1000);
+void whoAmI () {
+  String mac = WiFi.macAddress();
+  String s = String(MAC[0]);
 
-        for (int i=0; i<4; i++) {
-          Serial.print(SUBSCRIBE_TOPICS[i]);
-          Serial.print(": ");
-          if(0 == AWS_CLIENT.subscribe(SUBSCRIBE_TOPICS[i], callBackHandler)){
-              Serial.println("Subscribe Successfull");
-          } else {
-              Serial.println("Subscribe Failed, Check the Thing Name and Certificates");
-              while(1);
-          }
-        }
+  if (s.equals(mac)) {
+    ME = 0;
+    HIM = 1;
+  } else {
+    ME = 1;
+    HIM = 0;
+  }
 
-        if(0 == AWS_CLIENT.subscribe(UPDATE_TOPIC, callBackHandler)){
-            Serial.println("Subscribe Successfull");
-        } else {
-            Serial.println("Subscribe Failed, Check the Thing Name and Certificates");
-            while(1);
-        }
-    } else {
-        Serial.println("AWS connection failed, Check the HOST Address");
-        while(1);
+  Serial.print("Hello, I am ");
+  Serial.println(BOT_NAME[ME]);
+}
+
+boolean connectToWiFi() {
+
+  while (status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to SSID: ");
+    Serial.println(WIFI_SSID);
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    // wait 5 seconds for connection:
+    delay(5000);
+  }
+
+  Serial.println("Connected to wifi");
+
+  return (status == WL_CONNECTED);
+}
+
+boolean connectToAWS() {
+
+  if (0 == AWS_CLIENT.connect(HOST_ADDRESS, CLIENT_ID)) {
+    Serial.println("Connected to AWS");
+    delay(1000);
+
+//    char topic[50];
+
+    for (int i = 0; i < 2; i++) {
+
+//      sprintf(topic, SUBSCRIBE_TOPICS_TMPL[i], BOT_NAME[ME]);
+//      Serial.print("Subscribing to tmplt: ");
+//      Serial.println(topic);
+
+      Serial.print("Subscribing to topic: ");
+      Serial.println(SUBSCRIBE_TOPICS[ME][i]);
+
+      if (0 == AWS_CLIENT.subscribe(SUBSCRIBE_TOPICS[ME][i], callBackHandler)) {
+        Serial.println("Subscribe Successfull");
+      } else {
+        Serial.println("Subscribe Failed, Check the Thing Name and Certificates");
+        while (1);
+      }
+
     }
-    
+
+  } else {
+    Serial.println("AWS connection failed, Check the HOST Address");
+    while (1);
+  }
+
 }
 
 void setup() {
-  
-    WiFi.disconnect(true);
-    Serial.begin(115200);
-    
-    connectToWiFi();
-    connectToAWS();
-    
-    delay(2000);
+
+  WiFi.disconnect(true);
+  Serial.begin(115200);
+
+  connectToWiFi();
+  whoAmI();
+  connectToAWS();
+
+  delay(2000);
 }
 
-void handleEvents(JsonObject root) {
-  Serial.println("Handling events...");
+void handleMessage(JsonObject& root) {
+  Serial.print("Handling event for topic: ");
+  String topic = String(payloadTopic);
+  Serial.println(topic);
 
-
-  if (root["Barm"] == 1) {
-    digitalWrite(GRLIGHT_PIN, HIGH);
-    Serial.println("B arm is up");
-    delay(1000);
+  if(topic.startsWith(SUBSCRIBE_TOPICS[ME][1]) == 0){
+    Serial.println("update accepted");
+  } else if(topic.startsWith(SUBSCRIBE_TOPICS[ME][2]) == 0){
+    Serial.println("update rejected");
   } else {
-    digitalWrite(GRLIGHT_PIN, LOW);
+    Serial.println("unknown topic");
   }
 
-    if (analogRead(KICKBTN_PIN) < 4000 && root["Barm"] == 0) {
-    if (root["Berror"] == 0 && root["Bservo"] == 0) {
-      root["Akick"] = 0;
-      digitalWrite(REDLIGHT_PIN, LOW);
-      digitalWrite(GRLIGHT_PIN, LOW);
-      Serial.println("B reported back B kicked and B arm is down with no error");
-      delay(1000);
-    }
-  }
-  
-  if (analogRead(KICKBTN_PIN) > 4000 && root["Barm"] == 1) {
-    if (root["Berror"] == 0) {
-      root["Akick"] = 1;
-      Serial.println("Self button has been pushed");
-      delay(1000);
-    }
-  }
+  Serial.print("desired kick:");
+  const char* desiredKick = root["state"]["desired"]["kick"];
+  Serial.println(desiredKick);
 
-  if (analogRead(ARMBTN_PIN) > 4000) {
-    root["Aarm"] = 1;
-    Serial.println("Self arm is up");
-    delay(1000);
-    }
-      else {
-    root["Aarm"] = 0;
-    Serial.println("Self arm is down");
-  }
-  
-  if (analogRead(ARMBTN_PIN) < 4000 && root["Aservo"] == 0)  {
-    root["Aerror"] = 0;
-    digitalWrite(REDLIGHT_PIN, LOW);
-    Serial.println("no self error or error is cleared"); 
-    delay(1000);
-  }
-  
-  if (root["Akick"] == 1 && root["Bservo"] == 1) {
-    digitalWrite(REDLIGHT_PIN, HIGH);
-    Serial.println("B responded to kick command and queued to kick");
-    delay(1000);
-  }
-  
-  if (root["Akick"] == 0 && root["Bservo"] == 0) {
-    digitalWrite(REDLIGHT_PIN, LOW);
-    Serial.println("B kick not queued or it completed successfully");
+  Serial.print("desired arm:");
+  const char* desiredArm = root["state"]["desired"]["arm"];
+  Serial.println(desiredArm);
 
-  }
-  if (root["Bkick"] == 1) {
-    root["Aservo"] = 1;
-    Serial.println("B sent message for A to queue a kick");
+  Serial.print("desired servo:");
+  const char* desiredServo = root["state"]["desired"]["servo"];
+  Serial.println(desiredServo);
 
-  }
-  if (root["Aservo"] == 1 && digitalRead(Motion_PIN) == HIGH) {   //run servo if both true
-    runServo(root);
-  }
-  
-  if (root["Berror"] == 1) {
-    Serial.println("B servo has failed to kick or B robot didnt fall ");
-    for (int count = 0; count < 5; count++) {
-      digitalWrite(REDLIGHT_PIN, LOW);
-      delay(250);
-      digitalWrite(REDLIGHT_PIN, HIGH);
-      delay(250);
-    }
-  }
-  
-  if (root["Aerror"] == 1) {
-    Serial.println("Indicating self kick and robot error");
-    for (int count = 0; count < 5; count++) {
-      digitalWrite(GRLIGHT_PIN, LOW);
-      delay(250);
-      digitalWrite(GRLIGHT_PIN, HIGH);
-      delay(250);
-    }
-  }
- }
+  Serial.print("desired error:");
+  const char* desiredError = root["state"]["desired"]["error"];
+  Serial.println(desiredError);
 
-  void runServo(JsonObject root) {
-  if (analogRead(ARMBTN_PIN) > 4000) {
-    servo_14.attach(14);
-    servo_14.write(150);
-    delay(500);
-    servo_14.write(5);
-    Serial.println("Self servo has run");
-    root["Aservo"] = 0;
-    delay(3000);
-  }  
-    if (analogRead(ARMBTN_PIN) > 4000) {
-      root["Aerror"] = 1;
-      Serial.println("Self servo has failed to kick or self robot didnt fall ");
-    } else {
-      root["Aarm"] = 0;
-      Serial.println("Self arm is down and robot has fallen");
-   }
- }
+  Serial.print("reported kick:");
+  const char* reportedKick = root["state"]["reported"]["kick"];
+  Serial.println(reportedKick);
 
-void updateBotState(JsonObject root) {
-  Serial.println("Updating bot state...");
+  Serial.print("reported arm:");
+  const char* reportedArm = root["state"]["reported"]["arm"];
+  Serial.println(reportedArm);
+
+  Serial.print("reported servo:");
+  const char* reportedServo = root["state"]["reported"]["servo"];
+  Serial.println(reportedServo);
+
+  Serial.print("reported error:");
+  const char* reportedError = root["state"]["reported"]["error"];
+  Serial.println(reportedError);
+
 }
 
-void handleMessage(char *payload){
+JsonObject& parseJSON(char *json) {
 
-      Serial.println(payload);
-      delay(2000);
+  Serial.println("Parsing JSON message:");
+  Serial.println(json);
+  delay(2000);
 
-      StaticJsonDocument<200> doc;
-      // Deserialize the JSON document
-      DeserializationError error = deserializeJson(doc, payload);
+  StaticJsonBuffer<800> jsonBuffer;
+  JsonObject& root = jsonBuffer.parseObject(json);
 
-      // Test if parsing succeeds.
-      if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
-        return;
-      }
+  if (!root.success()) {
+    Serial.println("parseObject() failed");
+  }
 
-      // Get the root object in the document
-      JsonObject root = doc.as<JsonObject>();
-
-//      Serial.print("ROOT: ");
-//      char toPrint[512];
-//      root.serializeJsonPretty(doc,toPrint);
-//      Serial.printTo(toPrint);
-      
-      handleEvents(root);
-      updateBotState(root);
-
+  return root;
 }
 
 void loop() {
 
-    // see if we got a callback
-    if(msgReceived == 1){
-        msgReceived = 0;
-        Serial.print("Received Message:");
-        Serial.println(rcvdPayload);
-        handleMessage(rcvdPayload);
-    } else {
-        Serial.println("Waiting...");
-    }
-    
-    delay(POLLING_DELAY);
+  // see if we got a callback
+  if (msgReceived == 1) {
+    msgReceived = 0;
+    Serial.println("Received Message:");
+    Serial.println(rcvdPayload);
+    JsonObject& root = parseJSON(rcvdPayload);
+    handleMessage(root);
+  } else {
+    Serial.println("Waiting for some action...");
+  }
+
+  delay(POLLING_DELAY);
 }
