@@ -8,6 +8,23 @@
 
 AWS_IOT AWS_CLIENT;
 
+// define possible wifi access points to connect to
+const char* SSIDS[] = {
+  "NETGEAR37",
+  "JKFERRY2",
+  "bighoops",
+  "Engenius"
+};
+
+// corresponding passwords for the wifi access points
+const char* PWDS[] = {
+  "gentleraven032",
+  "f3rryl1nk",
+  "123babe123",
+  "tinker18"
+};
+
+
 int POLLING_DELAY = 1000;
 
 int ME = -1;
@@ -24,8 +41,6 @@ char* BOT_NAME[2] = {
   "BotB"
 };
 
-char WIFI_SSID[] = "NETGEAR37";
-char WIFI_PASSWORD[] = "gentleraven032";
 char HOST_ADDRESS[] = "ac0pct10qk7h9-ats.iot.us-west-2.amazonaws.com";
 char CLIENT_ID[] = "amebaClient";
 
@@ -116,9 +131,9 @@ boolean connectToWiFi() {
 
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
-    Serial.println(WIFI_SSID);
+    Serial.println(SSIDS[0]);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    status = WiFi.begin(SSIDS[0], PWDS[0]);
     // wait 5 seconds for connection:
     delay(5000);
   }
