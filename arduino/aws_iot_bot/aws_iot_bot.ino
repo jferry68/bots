@@ -201,6 +201,9 @@ void handleMessageForMe(JsonObject& root) {
   Serial.print("desired kick:");
   int desiredKick = root["state"]["desired"]["kick"];
   Serial.println(desiredKick);
+  if (desiredKick == 1) {
+    digitalWrite(GRLIGHT_PIN, HIGH);
+  }
 
   Serial.print("desired arm:");
   const char* desiredArm = root["state"]["desired"]["arm"];
