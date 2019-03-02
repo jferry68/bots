@@ -30,10 +30,10 @@ int POLLING_DELAY = 1000;
 int ME = -1;
 int HIM = -1;
 
-// Confiture the MAC Addresses here...
+// Configure the MAC Addresses here...  Jeremy's 3C:71:BF:84:B8:0C  Joe's spare 3C:71:BF:88:8D:6C
 char* MAC[2] = {
-  "3C:71:BF:84:B8:0C",
-  "mac:address:b"
+  "3C:71:BF:88:92:78",
+  "3C:71:BF:87:00:08"
 };
 
 char* BOT_NAME[2] = {
@@ -131,9 +131,9 @@ boolean connectToWiFi() {
 
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
-    Serial.println(SSIDS[0]);
+    Serial.println(SSIDS[1]);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(SSIDS[0], PWDS[0]);
+    status = WiFi.begin(SSIDS[1], PWDS[1]);
     // wait 5 seconds for connection:
     delay(5000);
   }
@@ -377,7 +377,7 @@ void registerStateChanges() {
 
 }
 
-void loop() {
+void loop() {  //looking for button presses
 
   // see if anything has changed with me
   registerStateChanges();
