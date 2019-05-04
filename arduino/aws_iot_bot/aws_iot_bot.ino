@@ -162,6 +162,7 @@ boolean connectToAWS() {
 
   if (0 == AWS_CLIENT.connect(HOST_ADDRESS, CLIENT_ID)) {
     Serial.println("Connected to AWS");
+    digitalWrite(led, HIGH);
     delay(1000);
 
     subscribeToTopics(ME);
@@ -169,6 +170,7 @@ boolean connectToAWS() {
 
   } else {
     Serial.println("AWS connection failed, Check the HOST Address");
+    digitalWrite(led, LOW);
     while (1);
   }
 
@@ -203,6 +205,8 @@ void handleMessageForMe(JsonObject& root) {
   Serial.println(desiredKick);
   if (desiredKick == 1) {
     digitalWrite(GRLIGHT_PIN, HIGH);
+   } else {
+    digitalWrite(GRLIGHT_PIN, LOW);
   }
 
   Serial.print("desired arm:");
@@ -240,6 +244,11 @@ void handleMessageForHim(JsonObject& root) {
   Serial.print("desired kick:");
   int desiredKick = root["state"]["desired"]["kick"];
   Serial.println(desiredKick);
+    if (desiredKick == 1) {
+    digitalWrite(GRLIGHT_PIN, HIGH);
+   } else {
+    digitalWrite(GRLIGHT_PIN, LOW);
+  }
 
   Serial.print("desired arm:");
   const char* desiredArm = root["state"]["desired"]["arm"];
@@ -352,7 +361,7 @@ void checkKickButtonState() {
     if (kickButtonState == HIGH) {
 
       Serial.println("kick button on");
-      digitalWrite(led, HIGH);
+      //digitalWrite(REDLIGHT_PIN, HIGH);
 
       // only request kick if he's ready
       if (kickHimState == 0) {
@@ -362,7 +371,7 @@ void checkKickButtonState() {
     } else {
       // if the current state is LOW then the button went from on to off:
       Serial.println("kick button off");
-      digitalWrite(led, LOW);
+      //digitalWrite(REDLIGHT_PIN, LOW);
     }
 
     // Delay a little bit to avoid bouncing
@@ -389,6 +398,8 @@ void loop() {  //looking for button presses
   sendStateUpdates();
 
   // see if we got a callback
+    Serial.print("Polling. mesgreceived= ");
+    Serial.println(msgReceived);
   if (msgReceived == 1) {
     msgReceived = 0;
     Serial.println("Received Message:");
