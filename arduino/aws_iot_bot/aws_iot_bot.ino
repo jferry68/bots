@@ -8,6 +8,8 @@
 
 AWS_IOT AWS_CLIENT;
 
+NETWORK = 0;
+
 // define possible wifi access points to connect to
 const char* SSIDS[] = {
   "NETGEAR37",
@@ -131,9 +133,9 @@ boolean connectToWiFi() {
 
   while (status != WL_CONNECTED) {
     Serial.print("Attempting to connect to SSID: ");
-    Serial.println(SSIDS[1]);
+    Serial.println(SSIDS[NETWORK]);
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(SSIDS[1], PWDS[1]);
+    status = WiFi.begin(SSIDS[NETWORK], PWDS[NETWORK]);
     // wait 5 seconds for connection:
     delay(5000);
   }
