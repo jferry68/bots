@@ -162,7 +162,7 @@ void subscribeToTopics(int who) {
 
 boolean connectToAWS() {
 
-  if (0 == AWS_CLIENT.connect(HOST_ADDRESS, CLIENT_ID)) {
+  if (0 == AWS_CLIENT.connect(HOST_ADDRESS, BOT_NAME[ME])) {
     Serial.println("Connected to AWS");
     digitalWrite(led, HIGH);
     delay(1000);
