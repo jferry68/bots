@@ -180,12 +180,10 @@ boolean connectToAWS() {
 
 void setup() {
 
-  // initialize the LED as an output:
   pinMode(led, OUTPUT);
-
   pinMode(ARMBTN_PIN, INPUT);
   pinMode(KICKBTN_PIN, INPUT);
-  //  pinMode(MOTION_PIN, INPUT);
+  pinMode(MOTION_PIN, INPUT);
   pinMode(REDLIGHT_PIN, OUTPUT);
   pinMode(GRLIGHT_PIN, OUTPUT);
 
