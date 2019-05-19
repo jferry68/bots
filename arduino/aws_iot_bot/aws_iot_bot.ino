@@ -8,7 +8,7 @@
 
 AWS_IOT AWS_CLIENT;
 
-int NETWORK = 0;
+int NETWORK = 1;
 
 // define possible wifi access points to connect to
 const char* SSIDS[] = {
@@ -84,21 +84,24 @@ char rcvdPayload[512];
 char *payloadTopic;
 const char desiredStateFmt[] = "{\"state\":{\"desired\":{\"kick\":%i,\"arm\":%i,\"servo\":%i}}}";
 char kickMsg[] = "{\"state\":{\"desired\":{\"kick\": 1}}}";
+char armMsg[] = "{\"state\":{\"desired\":{\"arm\": 1}}}";
 
 const int led = 2;
-Servo servo_14;
 const int REDLIGHT_PIN = 18;
 const int GRLIGHT_PIN = 17;
 const int MOTION_PIN = 16;
 const int KICKBTN_PIN = 34;
 const int ARMBTN_PIN = 35;
+Servo servo_14;
 
 // state of a kick I sent Him
 int kickHimState = 0;
-// current state of the button
+// current state of the kick button
 int kickButtonState = 0;
-// previous state of the button
+// previous state of the kick button
 int lastKickButtonState = 0;
+// int myArmState = 0;
+// int armButtonState = 0;
 
 void callBackHandler(char *topicName, int payloadLen, char *payLoad) {
   Serial.println("Callback received:");
@@ -110,7 +113,7 @@ void callBackHandler(char *topicName, int payloadLen, char *payLoad) {
   msgReceived = 1;
 }
 
-void whoAmI () {
+void whoAmI() {
   String mac = WiFi.macAddress();
   String s = String(MAC[0]);
 
@@ -194,24 +197,38 @@ void setup() {
   whoAmI();
   connectToAWS();
 
+  servo_14.attach(14);
+  servo_14.write(5);    //sets servo to 5 degrees
+  
   delay(2000);
 }
 
+void runServo() {
+  if (analogRead(ARMBTN_PIN) > 4000) {
+    servo_14.attach(14);
+    servo_14.write(150);
+    delay(500);
+    servo_14.write(5);
+    Serial.println("Self servo has run");
+    delay(500);
+  }
+ }
 
 void handleMessageForMe(JsonObject& root) {
 
   Serial.print("desired kick:");
   int desiredKick = root["state"]["desired"]["kick"];
   Serial.println(desiredKick);
-  if (desiredKick == 1) {
+    if (desiredKick == 1) {                                    //used when testing kick received
     digitalWrite(GRLIGHT_PIN, HIGH);
-  }
+    runServo();
+   }
 
-  Serial.print("desired arm:");
-  const char* desiredArm = root["state"]["desired"]["arm"];
-  Serial.println(desiredArm);
+//  Serial.print("desired arm:");                              //will never be needed
+//  const char* desiredArm = root["state"]["desired"]["arm"];
+//  Serial.println(desiredArm);
 
-  Serial.print("desired servo:");
+  Serial.print("desired servo:");                              //will never be needed
   const char* desiredServo = root["state"]["desired"]["servo"];
   Serial.println(desiredServo);
 
@@ -234,7 +251,6 @@ void handleMessageForMe(JsonObject& root) {
   Serial.print("reported error:");
   const char* reportedError = root["state"]["reported"]["error"];
   Serial.println(reportedError);
-
 }
 
 void handleMessageForHim(JsonObject& root) {
@@ -303,9 +319,9 @@ void sendKick() {
   // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsg) == 0) {
     kickHimState = 2;
-    Serial.print("Published Message:");
+    Serial.print("Published Kick Message:");
   } else {
-    Serial.print("Publish failed:");
+    Serial.print("Kick Publish failed:");
   }
   Serial.println(kickMsg);
 }
@@ -314,18 +330,35 @@ void sendKickReceived() {
   Serial.println("Sending kick received...");
 }
 
+// void sendArm() {
+//   Serial.println("Sending arm...");
+
+  // publish the message
+//   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], armMsg) == 0) {
+//     myArmState = 2;
+//     Serial.print("Published Arm Message:");
+//   } else {
+//     Serial.print("Arm Publish failed:");
+//   }
+//   Serial.println(armMsg);
+// }
+
+
 void sendReset() {
   Serial.println("Sending reset...");
 }
 
 void sendStateUpdates() {
 
-  // if my button has been pushed, send the kick request
+  // if my kick button has been pushed, send the kick request
   if (kickHimState == 1) {
     sendKick();
   }
 
-}
+  // if my arm button has been pushed, send the arm status
+//   if (armButtonState == 1) {
+//     sendArm();
+  }
 
 JsonObject& parseJSON(char *json) {
 
@@ -342,7 +375,6 @@ JsonObject& parseJSON(char *json) {
 
   return root;
 }
-
 
 void checkKickButtonState() {
 
@@ -375,15 +407,30 @@ void checkKickButtonState() {
   lastKickButtonState = kickButtonState;
 }
 
+// void checkArmButtonState() {
+  
+  // read the armbutton input pin:
+//   armButtonState = digitalRead(ARMBTN_PIN); 
+// }
+
 void registerStateChanges() {
 
   // check my kick button
   checkKickButtonState();
 
+  // check my arm button
+//   checkArmButtonState();
+//     if (armButtonState == HIGH) {
+//       armButtonState = 1;
+//       Serial.println("arm button on");
+//     } else {
+//       Serial.println("arm button off");
+//           armButtonState = 0;
+//   }
 }
 
-void loop() {  //looking for button presses
-
+void loop() {
+  //looking for button presses
   // see if anything has changed with me
   registerStateChanges();
 
