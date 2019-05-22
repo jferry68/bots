@@ -27,7 +27,7 @@ const char* PWDS[] = {
 };
 
 
-int POLLING_DELAY = 1000;
+int POLLING_DELAY = 500;
 
 int ME = -1;
 int HIM = -1;
@@ -83,8 +83,10 @@ char payload[512];
 char rcvdPayload[512];
 char *payloadTopic;
 const char desiredStateFmt[] = "{\"state\":{\"desired\":{\"kick\":%i,\"arm\":%i,\"servo\":%i}}}";
-char kickMsg[] = "{\"state\":{\"desired\":{\"kick\": 1}}}";
-char armMsg[] = "{\"state\":{\"desired\":{\"arm\": 1}}}";
+char kickMsgOn[] = "{\"state\":{\"desired\":{\"kick\": 1}}}";
+char kickMsgOff[] = "{\"state\":{\"desired\":{\"kick\": 0}}}";
+char armMsgOn[] = "{\"state\":{\"reported\":{\"arm\": 1}}}";
+char armMsgOff[] = "{\"state\":{\"reported\":{\"arm\": 0}}}";
 
 const int led = 2;
 const int REDLIGHT_PIN = 18;
@@ -168,7 +170,7 @@ boolean connectToAWS() {
   if (0 == AWS_CLIENT.connect(HOST_ADDRESS, BOT_NAME[ME])) {
     Serial.println("Connected to AWS");
     digitalWrite(led, HIGH);
-    delay(1000);
+    delay(500);
 
     subscribeToTopics(ME);
     subscribeToTopics(HIM);
@@ -200,37 +202,39 @@ void setup() {
   servo_14.attach(14);
   servo_14.write(5);    //sets servo to 5 degrees
   
-  delay(2000);
+  delay(500);
 }
 
 void runServo() {
-  if (analogRead(ARMBTN_PIN) > 4000) {
     servo_14.attach(14);
     servo_14.write(150);
     delay(500);
     servo_14.write(5);
     Serial.println("Self servo has run");
     delay(500);
+    kickHimState=0;
   }
- }
 
 void handleMessageForMe(JsonObject& root) {
 
   Serial.print("desired kick:");
   int desiredKick = root["state"]["desired"]["kick"];
   Serial.println(desiredKick);
-    if (desiredKick == 1) {                                    //used when testing kick received
-    digitalWrite(GRLIGHT_PIN, HIGH);
+    if (desiredKick == 1) {
+        if (analogRead(ARMBTN_PIN) > 4000) {
+//    digitalWrite(GRLIGHT_PIN, HIGH);                           //used when testing kick received
     runServo();
-   }
+    }
+  }
+}
 
 //  Serial.print("desired arm:");                              //will never be needed
 //  const char* desiredArm = root["state"]["desired"]["arm"];
 //  Serial.println(desiredArm);
 
-  Serial.print("desired servo:");                              //will never be needed
-  const char* desiredServo = root["state"]["desired"]["servo"];
-  Serial.println(desiredServo);
+//  Serial.print("desired servo:");                              //will never be needed
+//  const char* desiredServo = root["state"]["desired"]["servo"];
+//  Serial.println(desiredServo);
 
   Serial.print("desired error:");
   const char* desiredError = root["state"]["desired"]["error"];
@@ -262,13 +266,13 @@ void handleMessageForHim(JsonObject& root) {
     digitalWrite(REDLIGHT_PIN, HIGH);
   }
 
-  Serial.print("desired arm:");
-  const char* desiredArm = root["state"]["desired"]["arm"];
-  Serial.println(desiredArm);
+ //  Serial.print("desired arm:");                              //will never be needed
+ //  const char* desiredArm = root["state"]["desired"]["arm"];
+ //  Serial.println(desiredArm);
 
-  Serial.print("desired servo:");
-  const char* desiredServo = root["state"]["desired"]["servo"];
-  Serial.println(desiredServo);
+ // Serial.print("desired servo:");                              //will never be needed
+ // const char* desiredServo = root["state"]["desired"]["servo"];
+ //  Serial.println(desiredServo);
 
   Serial.print("desired error:");
   const char* desiredError = root["state"]["desired"]["error"];
@@ -315,44 +319,58 @@ void handleMessage(JsonObject& root) {
 
 void sendKick() {
   Serial.println("Sending kick...");
-
   // publish the message
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsg) == 0) {
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOn) == 0) {
     kickHimState = 2;
     Serial.print("Published Kick Message:");
   } else {
     Serial.print("Kick Publish failed:");
   }
-  Serial.println(kickMsg);
+  Serial.println(kickMsgOn);
 }
 
-void sendKickReceived() {
-  Serial.println("Sending kick received...");
+void sendKickOff() {
+  Serial.println("Sending kick off...");
+  // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOff) == 0) {
+    Serial.print("Published Kick Off Message:");
+  } else {
+    Serial.print("Kick Off Publish failed:");
+  }
+  Serial.println(kickMsgoff);
 }
+
+//void sendKickReceived() {                         // needed?
+//  Serial.println("Sending kick received...");
+//}
 
 // void sendArm() {
 //   Serial.println("Sending arm...");
 
   // publish the message
-//   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], armMsg) == 0) {
+//   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], armMsgOn) == 0) {
 //     myArmState = 2;
 //     Serial.print("Published Arm Message:");
 //   } else {
 //     Serial.print("Arm Publish failed:");
 //   }
-//   Serial.println(armMsg);
+//   Serial.println(armMsgOn);
 // }
 
 
-void sendReset() {
-  Serial.println("Sending reset...");
-}
+//void sendReset() {
+//  Serial.println("Sending reset...");
+//}
 
 void sendStateUpdates() {
 
   // if my kick button has been pushed, send the kick request
   if (kickHimState == 1) {
     sendKick();
+  }
+// if my kick button has been pushed, send the kick request
+  if (kickHimState == 0) {
+    sendKickOff();
   }
 
   // if my arm button has been pushed, send the arm status
@@ -364,7 +382,7 @@ JsonObject& parseJSON(char *json) {
 
   //  Serial.println("Parsing JSON message:");
   //  Serial.println(json);
-  //  delay(2000);
+  //  delay(500);
 
   StaticJsonBuffer<800> jsonBuffer;
   JsonObject& root = jsonBuffer.parseObject(json);
@@ -378,15 +396,11 @@ JsonObject& parseJSON(char *json) {
 
 void checkKickButtonState() {
 
-  // read the pushbutton input pin:
-  kickButtonState = digitalRead(KICKBTN_PIN);
+  kickButtonState = digitalRead(KICKBTN_PIN);       // read the pushbutton input pin:
+  
+  if (kickButtonState != lastKickButtonState) {     // compare the kickButtonState to its previous state
 
-  // compare the kickButtonState to its previous state
-  if (kickButtonState != lastKickButtonState) {
-
-    // if the state has changed, increment the counter
-    if (kickButtonState == HIGH) {
-
+    if (kickButtonState == HIGH) {                  // if the state has changed, increment the counter
       Serial.println("kick button on");
 
       // only request kick if he's ready
