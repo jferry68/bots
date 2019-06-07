@@ -76,7 +76,7 @@ char* SUBSCRIBE_TOPICS[2][2] =
   }
 };
 
-
+// Serial.begin(115200);
 int status = WL_IDLE_STATUS;
 int tick = 0, msgCount = 0, msgReceived = 0;
 char payload[512];
@@ -206,6 +206,8 @@ void setup() {
 }
 
 void runServo() {
+  Serial.println(digitalRead(MOTION_PIN));
+  if (digitalRead(MOTION_PIN) == HIGH) {
     servo_14.attach(14);
     servo_14.write(150);
     delay(500);
@@ -214,6 +216,7 @@ void runServo() {
     delay(500);
     kickHimState=0;
   }
+}
 
 void handleMessageForMe(JsonObject& root) {
 
@@ -226,7 +229,6 @@ void handleMessageForMe(JsonObject& root) {
     runServo();
     }
   }
-}
 
 //  Serial.print("desired arm:");                              //will never be needed
 //  const char* desiredArm = root["state"]["desired"]["arm"];
@@ -264,7 +266,9 @@ void handleMessageForHim(JsonObject& root) {
   Serial.println(desiredKick);
   if (desiredKick == 1) {
     digitalWrite(REDLIGHT_PIN, HIGH);
-  }
+  } else {
+    digitalWrite(REDLIGHT_PIN, LOW);
+  }    
 
  //  Serial.print("desired arm:");                              //will never be needed
  //  const char* desiredArm = root["state"]["desired"]["arm"];
@@ -293,7 +297,6 @@ void handleMessageForHim(JsonObject& root) {
   Serial.print("reported error:");
   const char* reportedError = root["state"]["reported"]["error"];
   Serial.println(reportedError);
-
 }
 
 void handleMessage(JsonObject& root) {
@@ -317,7 +320,7 @@ void handleMessage(JsonObject& root) {
 
 }
 
-void sendKick() {
+void sendKickOn() {
   Serial.println("Sending kick...");
   // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOn) == 0) {
@@ -333,11 +336,13 @@ void sendKickOff() {
   Serial.println("Sending kick off...");
   // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOff) == 0) {
+    kickHimState = 0;
+    digitalWrite(REDLIGHT_PIN, LOW);
     Serial.print("Published Kick Off Message:");
   } else {
     Serial.print("Kick Off Publish failed:");
   }
-  Serial.println(kickMsgoff);
+  Serial.println(kickMsgOff);
 }
 
 //void sendKickReceived() {                         // needed?
@@ -366,11 +371,11 @@ void sendStateUpdates() {
 
   // if my kick button has been pushed, send the kick request
   if (kickHimState == 1) {
-    sendKick();
+    sendKickOn();
   }
 // if my kick button has been pushed, send the kick request
   if (kickHimState == 0) {
-    sendKickOff();
+    // sendKickOff();
   }
 
   // if my arm button has been pushed, send the arm status
@@ -411,6 +416,7 @@ void checkKickButtonState() {
     } else {
       // if the current state is LOW then the button went from on to off:
       Serial.println("kick button off");
+        kickHimState = 0;
     }
 
     // Delay a little bit to avoid bouncing
