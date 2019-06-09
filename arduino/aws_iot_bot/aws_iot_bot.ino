@@ -513,7 +513,7 @@ Serial.println("Event: checkArmButton");
 
 void registerStateChanges() {
       Serial.println("Event: registerStateChanges");
-  Serial.print("    desiredKickMe(c)at 513 = ");
+  Serial.print("    desiredKickMe(c)at 517 = ");
   Serial.println(desiredKickMe);
   // check my kick button
   checkKickButtonState();
@@ -523,7 +523,7 @@ void registerStateChanges() {
 
 void loop() {
   Serial.println("Event: Main Loop");
-  Serial.print("    desiredKickMe(b) at 521 = ");
+  Serial.print("    desiredKickMe(b) at 527 = ");
   Serial.println(desiredKickMe);
   //looking for button presses
   // see if anything has changed with me
