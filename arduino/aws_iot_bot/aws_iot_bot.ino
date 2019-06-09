@@ -107,7 +107,7 @@ int kickHimState = 0;
 int kickButtonState = 0;
 int lastKickButtonState = 0;
 int desiredKickMe =0;
-int desiredKickHim =0;
+//int desiredKickHim =0;
 int lastReportedArm = 0;
 int armButtonState = 0;
 
@@ -235,9 +235,10 @@ Serial.println("Event: setup");
 void handleMessageForMe(JsonObject& root) {
 Serial.println("Event: handleMessageForMe");
 
-    int desiredKickMe = root["state"]["desired"]["kick"];
-  Serial.print("    desiredKickMe(a) at 240 = ");
-  Serial.println(desiredKickMe);
+  int desiredKick = root["state"]["desired"]["kick"];
+     if (desiredKick == 1) {
+      desiredKickMe = 1;
+     }
   
 //  Serial.print("desired arm:");                              //will never be needed
 //  const char* desiredArm = root["state"]["desired"]["arm"];
@@ -272,9 +273,9 @@ void handleMessageForHim(JsonObject& root) {
 Serial.println("Event: handleMessageForHim");
 
   Serial.print("desired kick Him Message:");
-  int desiredKickHim = root["state"]["desired"]["kick"];
-  Serial.println(desiredKickHim);
-  if (desiredKickHim == 1) {
+  int desiredKick = root["state"]["desired"]["kick"];
+  Serial.println(desiredKick);
+  if (desiredKick == 1) {
     digitalWrite(REDLIGHT_PIN, HIGH);
   } else {
     digitalWrite(REDLIGHT_PIN, LOW);
@@ -339,10 +340,6 @@ void handleMessage(JsonObject& root) {
 
 void runServo() {
 Serial.println("Event: runServo");
-  Serial.print("    desiredKickMe(e)at 343 = ");
-  Serial.println(desiredKickMe);
-
-   if (desiredKickMe == 1) {
      if (analogRead(ARMBTN_PIN) > 4000) {
         if (digitalRead(MOTION_PIN) == HIGH) {
           Serial.println("Running Self Servo");
@@ -356,16 +353,15 @@ Serial.println("Event: runServo");
              if (analogRead(ARMBTN_PIN) <1000) {
              myKickError=0;
              Serial.println("No MyKick Errors");
-//             sendKickOffMe();
         }
          if (analogRead(ARMBTN_PIN) >1000) {
          myKickError=1;
          Serial.println("There is a MyKick Error");    
         }
+        sendKickOffMe();
       }
     }
   }
-}
 
 void sendKickOnHim() {
   Serial.println("Event: sendKickOnHim");
@@ -415,17 +411,17 @@ void sendReportArmDown() {
   Serial.println(armMsgOff);
 }
 
-//void sendKickOffMe() {
-//  Serial.println("Event: sendKickOffMe");
-//   // publish the message
-//  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickMsgOff) == 0) {
-//    kickHimState = 0;
-//    Serial.print("Published Kick Off Message:");
-//  } else {
-//    Serial.print("Kick Off Publish failed:");
-//  }
-//  Serial.println(kickMsgOff);
-//}
+void sendKickOffMe() {
+  Serial.println("Event: sendKickOffMe");
+   // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickMsgOff) == 0) {
+    kickHimState = 0;
+    Serial.print("Published Kick Off Message:");
+  } else {
+    Serial.print("Kick Off Publish failed:");
+  }
+  Serial.println(kickMsgOff);
+}
 
 void bootUpCheckIn() {
     Serial.println("Event: bootUpCheckIn");
@@ -463,8 +459,6 @@ JsonObject& parseJSON(char *json) {
 
 void checkKickButtonState() {
 Serial.println("Event: checkKickButtonState");
-  Serial.print("    desiredKickMe(d)at 467 = ");
-  Serial.println(desiredKickMe);
   kickButtonState = digitalRead(KICKBTN_PIN);       // read the pushbutton input pin:
 
   if (kickButtonState != lastKickButtonState) {     // compare the kickButtonState to its previous state
@@ -492,8 +486,6 @@ Serial.println("Event: checkKickButtonState");
     Serial.print("Kick Him State = ");
     Serial.println(kickHimState);
 }
-  Serial.print("    desiredKickMe(e)at 496 = ");
-  Serial.println(desiredKickMe);
 }
 
 void checkArmButton() {
@@ -513,23 +505,13 @@ Serial.println("Event: checkArmButton");
 
 void registerStateChanges() {
       Serial.println("Event: registerStateChanges");
-  Serial.print("    desiredKickMe(c)at 517 = ");
-  Serial.println(desiredKickMe);
-  // check my kick button
   checkKickButtonState();
-  runServo();
   checkArmButton();
 }
 
 void loop() {
   Serial.println("Event: Main Loop");
-  Serial.print("    desiredKickMe(b) at 527 = ");
-  Serial.println(desiredKickMe);
-  //looking for button presses
-  // see if anything has changed with me
   registerStateChanges();
-
-  // send any necessary updates to my shadow
   sendStateUpdates();
 
   // see if we got a callback
@@ -540,6 +522,8 @@ void loop() {
     JsonObject& root = parseJSON(rcvdPayload);
     handleMessage(root);
   }
-
+    if (desiredKickMe == 1) {
+      runServo();
+  }
   delay(POLLING_DELAY);
 }
