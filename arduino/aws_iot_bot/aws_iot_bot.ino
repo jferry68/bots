@@ -1,6 +1,5 @@
 //Build Status
-//Trying to get Kicker's red light to turn off after kickee gets kicked properly
-//confusion about messages/publications/subscriptions to him and me
+//Now need to reset desired kick after kick has executed, and figure out why green light turns off after kick button pushed
 
 #include <AWS_IOT.h>
 #include <WiFi.h>
