@@ -29,7 +29,7 @@ const char* PWDS[] = {
 };
 
 
-int POLLING_DELAY = 500;
+int POLLING_DELAY = 1000;
 
 int ME = -1;
 int HIM = -1;
@@ -89,8 +89,10 @@ char kickMsgOn[] = "{\"state\":{\"desired\":{\"kick\": 10}}}";
 char kickMsgOff[] = "{\"state\":{\"desired\":{\"kick\": 9}}}";
 char armMsgOn[] = "{\"state\":{\"reported\":{\"arm\": 10}}}";
 char armMsgOff[] = "{\"state\":{\"reported\":{\"arm\": 9}}}";
-char errorMsgOff[] = "{\"state\":{\"reported\":{\"error\": 0}}}";
-char kickReportOn[] = "{\"state\":{\"reported\":{\"kick\": 1}}}";
+char errorMsgOn[] = "{\"state\":{\"reported\":{\"error\": 10}}}";
+char errorMsgOff[] = "{\"state\":{\"reported\":{\"error\": 9}}}";
+char kickReportOn[] = "{\"state\":{\"reported\":{\"kick\": 10}}}";
+char kickReportOff[] = "{\"state\":{\"reported\":{\"kick\": 9}}}";
 
 const int led = 2;
 const int REDLIGHT_PIN = 18;
@@ -101,7 +103,7 @@ const int ARMBTN_PIN = 35;
 Servo servo_14;
 
 int bootUpCheckedIn = 0;
-int myKickError = 0;
+int myKickError = 9;
 int kickHimState = 0;
 int kickButtonState = 0;
 int lastKickButtonState = 0;
@@ -111,6 +113,8 @@ int myRedLight = 0;
 int lastReportedArm = 9;
 int armButtonState = 0;
 int hisReportedArm = 9;
+int lastReportedKickMe = 9;
+int hisReportedkick=0;
 
 void callBackHandler(char *topicName, int payloadLen, char *payLoad) {
 Serial.println("Method: callBackHandler");
@@ -172,17 +176,17 @@ void subscribeToTopics(int who) {
   }
       // Blink 3 times to indicate subscriptions successful
       digitalWrite(led, LOW);
-      delay(200);
+      delay(50);
       digitalWrite(led, HIGH);
-      delay(200);
+      delay(50);
       digitalWrite(led, LOW);
-      delay(200);
+      delay(50);
       digitalWrite(led, HIGH);
-      delay(200); 
+      delay(50); 
       digitalWrite(led, LOW);
-      delay(200);
+      delay(50);
       digitalWrite(led, HIGH);
-      delay(2000);
+      delay(1000);
 }
 
 boolean connectToAWS() {
@@ -198,7 +202,7 @@ boolean connectToAWS() {
       digitalWrite(led, LOW);
       delay(200);
       digitalWrite(led, HIGH);
-      delay(2000);
+      delay(1000);
 
     subscribeToTopics(ME);
     subscribeToTopics(HIM);
@@ -273,6 +277,13 @@ Serial.println("Method: handleMessageForMe");
 void handleMessageForHim(JsonObject& root) {
 Serial.println("Method: handleMessageForHim");
 
+  Serial.print("his reported kick:");
+  int hisReportedKick = root["state"]["reported"]["kick"].as<int>();
+  Serial.println(hisReportedKick);
+  if (hisReportedKick ==10) {
+    sendKickOffHim();
+  }
+
   Serial.print("his desired kick Message:");
   int desiredKick = root["state"]["desired"]["kick"].as<int>();
   Serial.println(desiredKick);
@@ -281,7 +292,7 @@ Serial.println("Method: handleMessageForHim");
   }
   if (desiredKick == 9) {
     desiredKickHim = 9;
-  }  
+  } 
 
  //  Serial.print("his desired arm:");                              //will never be needed
  //  const char* desiredArm = root["state"]["desired"]["arm"];
@@ -295,11 +306,7 @@ Serial.println("Method: handleMessageForHim");
   const char* desiredError = root["state"]["desired"]["error"];
   Serial.println(desiredError);
 
-  Serial.print("his reported kick:");
-  const char* reportedKick = root["state"]["reported"]["kick"];
-  Serial.println(reportedKick);
-
-  Serial.print("        reported arm from Root:");
+  Serial.print("reported arm from Root:");
   int reportedArm = root["state"]["reported"]["arm"].as<int>();
     Serial.println(reportedArm);
   if (reportedArm == 10) {
@@ -308,7 +315,7 @@ Serial.println("Method: handleMessageForHim");
   if (reportedArm == 9) {
     hisReportedArm = 9;
   } 
-  Serial.print("        hisreportedarm assigned from Root:");
+  Serial.print("hisreportedarm assigned from Root:");
   Serial.println(hisReportedArm);
   
 
@@ -340,7 +347,6 @@ void handleMessage(JsonObject& root) {
   } else {
     Serial.println("unknown topic");
   }
-
 }
 
 void runServo() {
@@ -354,16 +360,16 @@ Serial.println("Method: runServo");
            servo_14.write(5);
            Serial.println("Self servo has run");
            desiredKickMe=9;
-           delay(500);
+           delay(1000);
              if (analogRead(ARMBTN_PIN) <1000) {
-             myKickError=0;
+             myKickError=9;
              Serial.println("No MyKick Errors");
         }
          if (analogRead(ARMBTN_PIN) > 4000) {
-         myKickError=1;
-         Serial.println("There is a MyKick Error");    
+         myKickError=10;
+         Serial.println("There is a MyKick Error");    //make error report method  
         }
-        sendMyReportedKick();
+        sendMyReportedKickOn();
       }
     }
   }
@@ -374,6 +380,14 @@ void sendKickOnHim() {
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOn) == 0) {
     kickHimState = 2;
     Serial.print("Published Kick Message:");
+      digitalWrite(REDLIGHT_PIN, LOW);
+      delay(200);
+      digitalWrite(REDLIGHT_PIN, HIGH);
+      delay(200);
+      digitalWrite(REDLIGHT_PIN, LOW);
+      delay(200);
+      digitalWrite(REDLIGHT_PIN, HIGH);
+      delay(200);
   } else {
     Serial.print("Kick Publish failed:");
   }
@@ -381,15 +395,18 @@ void sendKickOnHim() {
 }
 
 void sendKickOffHim() {
-  Serial.println("Method: sendKickOffHim");
+    Serial.println("Method: sendKickOffHim");
+    kickHimState = 0;
+    desiredKickHim = 9;
+    digitalWrite(REDLIGHT_PIN, LOW);
   // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOff) == 0) {
-    kickHimState = 0;
     Serial.print("Published Kick Message:");
   } else {
     Serial.print("Kick Publish failed:");
   }
   Serial.println(kickMsgOff);
+  delay(1000);
 }
 
 void sendReportArmUp() {
@@ -416,15 +433,29 @@ void sendReportArmDown() {
   Serial.println(armMsgOff);
 }
 
-void sendMyReportedKick() {
-  Serial.println("Method: sendKickReportedMe");
+void sendMyReportedKickOn() {
+  Serial.println("Method: sendMyReportedKickOn");
    // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOn) == 0) {
-    Serial.print("Published KickReportedMe Message:");
+    Serial.print("Published MyReportedKickOn Message:");
   } else {
-    Serial.print("KickReportedMe Publish failed:");
+    Serial.print("MyReportedKickOn Publish failed:");
   }
   Serial.println(kickReportOn);
+  lastReportedKickMe = 10;
+  delay(1000);
+}
+
+void sendMyReportedKickOff() {
+  Serial.println("Method: sendKickReportedMeOff");
+   // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOff) == 0) {
+    Serial.print("Published KickReportedMeOff Message:");
+  } else {
+    Serial.print("KickReportedMeOff Publish failed:");
+  }
+  Serial.println(kickReportOff);
+  lastReportedKickMe = 9;
 }
 
 void bootUpCheckIn() {
@@ -457,12 +488,13 @@ void bootUpCheckIn() {
   } else {
     Serial.print("Bootup armMsgOff HIM message failed:");
   }
-// publish armMsgOff ME
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armMsgOff) == 0) {
-    Serial.print("Published armMsgOff ME:");
-    Serial.println(armMsgOff);
+     
+// publish kickReportOff ME
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOff) == 0) {
+    Serial.print("Published reportKickOff ME:");
+    Serial.println(kickReportOff);
   } else {
-    Serial.print("Bootup armMsgOff ME message failed:");
+    Serial.print("Bootup kickReportOff ME message failed:");
   }
   
   bootUpCheckedIn = 1; 
@@ -477,6 +509,28 @@ Serial.println("Method: SendStateUpdates");
   if (kickHimState == 1) {
     sendKickOnHim();
   }
+    if (desiredKickMe == 10) {
+      runServo();
+  }
+  if (desiredKickHim == 10) {
+     digitalWrite(REDLIGHT_PIN, HIGH);
+  }
+  if (desiredKickHim == 9) {
+    digitalWrite(REDLIGHT_PIN, LOW);
+  }
+  Serial.print("His Reported Arm in main loop = ");
+  Serial.println(hisReportedArm);
+  if (hisReportedArm ==10) {
+     digitalWrite(GRLIGHT_PIN, HIGH);
+  }
+  if (hisReportedArm ==9) {
+     digitalWrite(GRLIGHT_PIN, LOW);
+  }
+  if (lastReportedKickMe ==10) {
+    if (desiredKickMe ==9) {
+      sendMyReportedKickOff();
+    }
+  }
 }
 
 JsonObject& parseJSON(char *json) {
@@ -488,24 +542,26 @@ JsonObject& parseJSON(char *json) {
     Serial.println("parseObject() failed");
   }
   return root;
-}
+  }
 
-void checkKickButtonState() {
-Serial.println("Method: checkKickButtonState");
+void checkMyStates() {
+  Serial.println("Method: checkMyStates");
+    Serial.println("Part1 checkKickButtonState");
   kickButtonState = digitalRead(KICKBTN_PIN);       // read the pushbutton input pin:
 
   if (kickButtonState != lastKickButtonState) {     // compare the kickButtonState to its previous state
 
     if (kickButtonState == HIGH) {                  // if the state has changed, increment the counter
       Serial.println("kick button on");
-      delay(3000);                                  // wait for finger to unpush
+      digitalWrite(REDLIGHT_PIN, HIGH);
+      delay(2000);                                  // wait for finger to unpush
       // only request kick if he's ready
       if (kickHimState == 0) {
         kickHimState = 1;
     } else {
       // if the current state is LOW then the button went from on to off:
       Serial.println("kick button off");
-      delay(3000);                                  // wait for finger to unpush
+      delay(2000);                                  // wait for finger to unpush
         if (kickHimState == 2) {
         kickHimState = 0;
         sendKickOffHim();
@@ -519,10 +575,7 @@ Serial.println("Method: checkKickButtonState");
     Serial.print("Kick Him State = ");
     Serial.println(kickHimState);
 }
-}
-
-void checkArmButton() {
-Serial.println("Method: checkArmButton");
+Serial.println("Part2 checkArmButton");
   armButtonState = analogRead(ARMBTN_PIN);       // read the pushbutton input pin:
   Serial.print("analog read of arm button = ");
   Serial.println(armButtonState);
@@ -542,12 +595,9 @@ Serial.println("Method: checkArmButton");
 }
 
 void loop() {
-  Serial.println("Method: Main Loop");
-  checkKickButtonState();
-  checkArmButton();
-  sendStateUpdates();
-
-  // see if we got a callback
+    Serial.println("Method: Main Loop");
+    
+Serial.println("Part1  Check for callback");
   if (msgReceived == 1) {
     msgReceived = 0;
     Serial.print("Received Message:");
@@ -555,24 +605,11 @@ void loop() {
     JsonObject& root = parseJSON(rcvdPayload);
     handleMessage(root);
   }
-    if (desiredKickMe == 10) {
-      runServo();
-  }
-  if (desiredKickHim == 10) {
-     digitalWrite(REDLIGHT_PIN, HIGH);
-  }
-  if (desiredKickHim == 9) {
-    digitalWrite(REDLIGHT_PIN, LOW);
-  }
-  
-  Serial.print("His Reported Arm in main loop = ");
-  Serial.println(hisReportedArm);
-  if (hisReportedArm ==10) {
-     digitalWrite(GRLIGHT_PIN, HIGH);
-  }
-  if (hisReportedArm ==9) {
-     digitalWrite(GRLIGHT_PIN, LOW);
-  }
-  
-  delay(POLLING_DELAY);
+Serial.println("Part2  Check My States");  
+  checkMyStates();
+
+Serial.println("Part3  Send State Updates");   
+  sendStateUpdates();
+
+  delay(3000);
 }

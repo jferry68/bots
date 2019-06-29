@@ -1,4 +1,4 @@
-//use 10s and 9s for status. trying to convert char* to int.
+//seems stable. need to get kick light to go off after he kicks
 
 #include <AWS_IOT.h>
 #include <WiFi.h>
@@ -292,7 +292,7 @@ Serial.println("Method: handleMessageForHim");
   }
   if (desiredKick == 9) {
     desiredKickHim = 9;
-  }  
+  } 
 
  //  Serial.print("his desired arm:");                              //will never be needed
  //  const char* desiredArm = root["state"]["desired"]["arm"];
@@ -347,7 +347,6 @@ void handleMessage(JsonObject& root) {
   } else {
     Serial.println("unknown topic");
   }
-
 }
 
 void runServo() {
@@ -435,12 +434,12 @@ void sendReportArmDown() {
 }
 
 void sendMyReportedKickOn() {
-  Serial.println("Method: sendKickReportedMeOn");
+  Serial.println("Method: sendMyReportedKickOn");
    // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOn) == 0) {
-    Serial.print("Published KickReportedMeOn Message:");
+    Serial.print("Published MyReportedKickOn Message:");
   } else {
-    Serial.print("KickReportedMeOn Publish failed:");
+    Serial.print("MyReportedKickOn Publish failed:");
   }
   Serial.println(kickReportOn);
   lastReportedKickMe = 10;
@@ -457,26 +456,6 @@ void sendMyReportedKickOff() {
   }
   Serial.println(kickReportOff);
   lastReportedKickMe = 9;
-}
-
-void checkArmButton() {
-Serial.println("Method: checkArmButton");
-  armButtonState = analogRead(ARMBTN_PIN);       // read the pushbutton input pin:
-  Serial.print("analog read of arm button = ");
-  Serial.println(armButtonState);
-  Serial.print("last reported arm = ");
-  Serial.println(lastReportedArm);
-  
-    if (armButtonState > 4000) {
-      if (lastReportedArm == 9) {
-      sendReportArmUp();
-      }
-    }
-    if (armButtonState < 1000) {
-      if (lastReportedArm == 10) {
-      sendReportArmDown();
-      }
-    }
 }
 
 void bootUpCheckIn() {
@@ -509,8 +488,6 @@ void bootUpCheckIn() {
   } else {
     Serial.print("Bootup armMsgOff HIM message failed:");
   }
-// publish bootup status of arm ME
-     checkArmButton();
      
 // publish kickReportOff ME
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOff) == 0) {
@@ -532,6 +509,28 @@ Serial.println("Method: SendStateUpdates");
   if (kickHimState == 1) {
     sendKickOnHim();
   }
+    if (desiredKickMe == 10) {
+      runServo();
+  }
+  if (desiredKickHim == 10) {
+     digitalWrite(REDLIGHT_PIN, HIGH);
+  }
+  if (desiredKickHim == 9) {
+    digitalWrite(REDLIGHT_PIN, LOW);
+  }
+  Serial.print("His Reported Arm in main loop = ");
+  Serial.println(hisReportedArm);
+  if (hisReportedArm ==10) {
+     digitalWrite(GRLIGHT_PIN, HIGH);
+  }
+  if (hisReportedArm ==9) {
+     digitalWrite(GRLIGHT_PIN, LOW);
+  }
+  if (lastReportedKickMe ==10) {
+    if (desiredKickMe ==9) {
+      sendMyReportedKickOff();
+    }
+  }
 }
 
 JsonObject& parseJSON(char *json) {
@@ -543,10 +542,11 @@ JsonObject& parseJSON(char *json) {
     Serial.println("parseObject() failed");
   }
   return root;
-}
+  }
 
-void checkKickButtonState() {
-Serial.println("Method: checkKickButtonState");
+void checkMyStates() {
+  Serial.println("Method: checkMyStates");
+    Serial.println("Part1 checkKickButtonState");
   kickButtonState = digitalRead(KICKBTN_PIN);       // read the pushbutton input pin:
 
   if (kickButtonState != lastKickButtonState) {     // compare the kickButtonState to its previous state
@@ -575,39 +575,29 @@ Serial.println("Method: checkKickButtonState");
     Serial.print("Kick Him State = ");
     Serial.println(kickHimState);
 }
+Serial.println("Part2 checkArmButton");
+  armButtonState = analogRead(ARMBTN_PIN);       // read the pushbutton input pin:
+  Serial.print("analog read of arm button = ");
+  Serial.println(armButtonState);
+  Serial.print("last reported arm = ");
+  Serial.println(lastReportedArm);
+  
+    if (armButtonState > 4000) {
+      if (lastReportedArm == 9) {
+      sendReportArmUp();
+      }
+    }
+    if (armButtonState < 1000) {
+      if (lastReportedArm == 10) {
+      sendReportArmDown();
+      }
+    }
 }
 
 void loop() {
-  Serial.println("Method: Main Loop");
-  checkKickButtonState();
-  checkArmButton();
-  sendStateUpdates();
-
-    if (desiredKickMe == 10) {
-      runServo();
-  }
-  if (desiredKickHim == 10) {
-     digitalWrite(REDLIGHT_PIN, HIGH);
-  }
-  if (desiredKickHim == 9) {
-    digitalWrite(REDLIGHT_PIN, LOW);
-  }
-  
-  Serial.print("His Reported Arm in main loop = ");
-  Serial.println(hisReportedArm);
-  if (hisReportedArm ==10) {
-     digitalWrite(GRLIGHT_PIN, HIGH);
-  }
-  if (hisReportedArm ==9) {
-     digitalWrite(GRLIGHT_PIN, LOW);
-  }
-  if (lastReportedKickMe ==10) {
-    if (desiredKickMe ==9) {
-      sendMyReportedKickOff();
-    }
-  }
-  
-    // see if we got a callback
+    Serial.println("Method: Main Loop");
+    
+Serial.println("Part1  Check for callback");
   if (msgReceived == 1) {
     msgReceived = 0;
     Serial.print("Received Message:");
@@ -615,5 +605,11 @@ void loop() {
     JsonObject& root = parseJSON(rcvdPayload);
     handleMessage(root);
   }
-    delay(1000);
+Serial.println("Part2  Check My States");  
+  checkMyStates();
+
+Serial.println("Part3  Send State Updates");   
+  sendStateUpdates();
+
+  delay(3000);
 }
