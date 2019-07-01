@@ -1,4 +1,4 @@
-//use 10s and 9s for status. trying to convert char* to int.
+//me crashes after he kicks
 
 #include <AWS_IOT.h>
 #include <WiFi.h>
@@ -281,10 +281,11 @@ Serial.println("Method: handleMessageForHim");
   int hisReportedKick = root["state"]["reported"]["kick"].as<int>();
   Serial.println(hisReportedKick);
   if (hisReportedKick ==10) {
-    sendKickOffHim();
+    kickHimState=0;                                                       //>>>>>>>>>>new
   }
 
-  Serial.print("his desired kick Message:");
+  Serial.println("his desired kick Message:");
+    delay(500);                                                             //>>>>>>>>>>new
   int desiredKick = root["state"]["desired"]["kick"].as<int>();
   Serial.println(desiredKick);
   if (desiredKick == 10) {
@@ -373,6 +374,16 @@ Serial.println("Method: runServo");
       }
     }
   }
+  
+void publishFailureBlink() {
+  Serial.println("Method: publishFailureBlink");
+    for (int count = 0; count < 10; count++) {
+      digitalWrite(led, LOW);
+      delay(10);
+      digitalWrite(led, HIGH);
+      delay(10);
+    }
+}
 
 void sendKickOnHim() {
   Serial.println("Method: sendKickOnHim");
@@ -390,23 +401,24 @@ void sendKickOnHim() {
       delay(200);
   } else {
     Serial.print("Kick Publish failed:");
+    publishFailureBlink();
   }
   Serial.println(kickMsgOn);
 }
 
 void sendKickOffHim() {
     Serial.println("Method: sendKickOffHim");
-    kickHimState = 0;
     desiredKickHim = 9;
     digitalWrite(REDLIGHT_PIN, LOW);
   // publish the message
+       delay(3000);                                //>>>>>>>>>>>>>>>>> new
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOff) == 0) {
-    Serial.print("Published Kick Message:");
+    Serial.print("Published Kick Message:");       // crashes me here
   } else {
     Serial.print("Kick Publish failed:");
+    publishFailureBlink();
   }
   Serial.println(kickMsgOff);
-  delay(1000);
 }
 
 void sendReportArmUp() {
@@ -417,6 +429,7 @@ void sendReportArmUp() {
     Serial.print("Published Arm Up Message:");
   } else {
     Serial.print("Arm Up Publish failed:");
+    publishFailureBlink();
   }
   Serial.println(armMsgOn);
 }
@@ -429,6 +442,7 @@ void sendReportArmDown() {
     Serial.print("Published Arm Down Message:");
   } else {
     Serial.print("Arm Down Publish failed:");
+    publishFailureBlink();
   }
   Serial.println(armMsgOff);
 }
@@ -436,23 +450,26 @@ void sendReportArmDown() {
 void sendMyReportedKickOn() {
   Serial.println("Method: sendMyReportedKickOn");
    // publish the message
+   delay(3000);                                //>>>>>>>>>>>>>>>>> new
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOn) == 0) {
     Serial.print("Published MyReportedKickOn Message:");
   } else {
     Serial.print("MyReportedKickOn Publish failed:");
+    publishFailureBlink();
   }
   Serial.println(kickReportOn);
   lastReportedKickMe = 10;
-  delay(1000);
 }
 
 void sendMyReportedKickOff() {
   Serial.println("Method: sendKickReportedMeOff");
    // publish the message
+     delay(3000);                                //>>>>>>>>>>>>>>>>> new
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOff) == 0) {
     Serial.print("Published KickReportedMeOff Message:");
   } else {
     Serial.print("KickReportedMeOff Publish failed:");
+    publishFailureBlink();
   }
   Serial.println(kickReportOff);
   lastReportedKickMe = 9;
@@ -466,6 +483,7 @@ void bootUpCheckIn() {
     Serial.println(errorMsgOff);
   } else {
     Serial.print("Bootup Erroroff HIM Message failed:");
+    publishFailureBlink();
   }
 // publish errorMegOff ME
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], errorMsgOff) == 0) {
@@ -473,6 +491,7 @@ void bootUpCheckIn() {
     Serial.println(errorMsgOff);
   } else {
     Serial.print("Bootup Erroroff ME Message failed:");
+    publishFailureBlink();
   }
 // publish kickMsgOff HIM
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOff) == 0) {
@@ -480,6 +499,7 @@ void bootUpCheckIn() {
     Serial.println(kickMsgOff);
   } else {
     Serial.print("Bootup kickMsgOff HIM message failed:");
+    publishFailureBlink();
   }
 // publish armMsgOff HIM
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], armMsgOff) == 0) {
@@ -487,6 +507,7 @@ void bootUpCheckIn() {
     Serial.println(armMsgOff);
   } else {
     Serial.print("Bootup armMsgOff HIM message failed:");
+    publishFailureBlink();
   }
      
 // publish kickReportOff ME
@@ -495,9 +516,11 @@ void bootUpCheckIn() {
     Serial.println(kickReportOff);
   } else {
     Serial.print("Bootup kickReportOff ME message failed:");
+    publishFailureBlink();
   }
   
-  bootUpCheckedIn = 1; 
+  bootUpCheckedIn = 1;
+  delay(3000);                                //>>>>>>>>>>>>>>>>> new
 }
 
 void sendStateUpdates() {
@@ -509,6 +532,10 @@ Serial.println("Method: SendStateUpdates");
   if (kickHimState == 1) {
     sendKickOnHim();
   }
+  if (kickHimState == 0) {
+    sendKickOffHim();
+  }
+  
     if (desiredKickMe == 10) {
       runServo();
   }
@@ -540,6 +567,7 @@ JsonObject& parseJSON(char *json) {
 
   if (!root.success()) {
     Serial.println("parseObject() failed");
+    publishFailureBlink();
   }
   return root;
   }
@@ -564,7 +592,6 @@ void checkMyStates() {
       delay(2000);                                  // wait for finger to unpush
         if (kickHimState == 2) {
         kickHimState = 0;
-        sendKickOffHim();
       }
     }
   }
@@ -576,7 +603,7 @@ void checkMyStates() {
     Serial.println(kickHimState);
 }
 Serial.println("Part2 checkArmButton");
-  armButtonState = analogRead(ARMBTN_PIN);       // read the pushbutton input pin:
+  armButtonState = analogRead(ARMBTN_PIN);
   Serial.print("analog read of arm button = ");
   Serial.println(armButtonState);
   Serial.print("last reported arm = ");
@@ -611,5 +638,5 @@ Serial.println("Part2  Check My States");
 Serial.println("Part3  Send State Updates");   
   sendStateUpdates();
 
-  delay(3000);
+  delay(1000);
 }
