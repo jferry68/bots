@@ -100,6 +100,7 @@ const int KICKBTN_PIN = 34;
 const int ARMBTN_PIN = 35;
 Servo servo_14;
                           // Establish Global Variables
+int sendTry = 0;
 int bootUpCheckInState = 9;
 int myLastReportedArm = 9;
 int myLastReportedArmError = 9;
@@ -269,6 +270,7 @@ Serial.println("Method: handleMessageFromHim");
 
   Serial.print("  His desired kick message: ");
   int desiredKick = root["state"]["desired"]["kick"].as<int>();
+    Serial.println(desiredKick);
     if (desiredKick == 10) {
     hisLastDesiredKick = 10;
      digitalWrite(REDLIGHT_PIN, HIGH);
@@ -302,60 +304,10 @@ void handleMessage(JsonObject& root) {
   }
 }
 
-//--Message Sending-----------------------------------------------------------------------
-
-void sendReportArmUp() {
-  Serial.println("Method: sendReportArmUp");
-  // publish the message
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armMsgOn) == 0) {
-    Serial.print("Published Arm Up Message:");
-  } else {
-    Serial.print("Arm Up Publish failed:");
-      publishMessageError();
-  }
-  Serial.println(armMsgOn);
-}
-
-void sendReportArmDown() {
-  Serial.println("Method: sendReportArmDown");
-  // publish the message
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armMsgOff) == 0) {
-    Serial.print("Published Arm Down Message:");
-  } else {
-    Serial.print("Arm Down Publish failed:");
-      publishMessageError();
-  }
-  Serial.println(armMsgOff);
-}
-
-void sendReportArmErrorOn() {
-  Serial.println("Method: sendReportArmErrorOn");
-  // publish the message
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armErrorOn) == 0) {
-    Serial.print("Published Arm Error On Message:");
-  } else {
-    Serial.print("Arm Error On Publish failed:");
-      publishMessageError();
-  }
-  Serial.println(armErrorOn);
-}
-
-void sendReportArmErrorOff() {
-  Serial.println("Method: sendReportArmErrorOff");
-  // publish the message
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armErrorOff) == 0) {
-    Serial.print("Published Arm Error Off Message:");
-  } else {
-    Serial.print("Arm Error Off Publish failed:");
-      publishMessageError();
-  }
-  Serial.println(armErrorOff);
-}
-
 void publishMessageError() {
     Serial.println("Method: publishMessageError");
-    // Blink 10 times to indicate Connection to AWS
-    for (int count = 0; count < 10; count++) {
+    // Blink 20 times to indicate publish error after 3 tries
+    for (int count = 0; count < 20; count++) {
       digitalWrite(led, LOW);
       delay(50);
       digitalWrite(led, HIGH);
@@ -364,28 +316,138 @@ void publishMessageError() {
       delay(1000);
 }
 
+//--Message Sending-----------------------------------------------------------------------
+
+//void sendReportArmUp() {
+//  Serial.println("Method: sendReportArmUp");
+//  // publish the message
+//  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armMsgOn) == 0) {
+//    Serial.print("Published Arm Up Message:");
+//  } else {
+//    Serial.print("Arm Up Publish failed:");
+//      publishMessageError();
+//  }
+//  Serial.println(armMsgOn);
+//}
+
+void sendReportArmUp() {
+  Serial.println("Method: sendReportArmUp");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
+  // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armMsgOn) == 0) {
+    Serial.print("Published Arm Up Message:");
+    Serial.println(armMsgOn);
+    sendTry = 3;
+  } else {
+    Serial.println("Arm Up Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
+      publishMessageError(); 
+      } 
+  }
+ }
+}
+
+void sendReportArmDown() {
+  Serial.println("Method: sendReportArmDown");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
+  // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armMsgOff) == 0) {
+    Serial.print("Published Arm Down Message:");
+    Serial.println(armMsgOff);
+    sendTry = 3;
+  } else {
+    Serial.println("Arm Down Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
+      publishMessageError();
+      }
+  }
+ }
+}
+
+void sendReportArmErrorOn() {
+  Serial.println("Method: sendReportArmErrorOn");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
+  // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armErrorOn) == 0) {
+    Serial.print("Published Arm Error On Message:");
+    Serial.println(armErrorOn);
+    sendTry = 3;
+  } else {
+    Serial.println("Arm Error On Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
+      publishMessageError();
+   }
+  }
+ }
+}
+
+void sendReportArmErrorOff() {
+  Serial.println("Method: sendReportArmErrorOff");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
+  // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armErrorOff) == 0) {
+    Serial.print("Published Arm Error Off Message:");
+    Serial.println(armErrorOff);
+    sendTry = 3;
+  } else {
+    Serial.println("Arm Error Off Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
+      publishMessageError();
+   }
+  }
+ }
+}
+
 void sendKickHimOn() {
   Serial.println("Method: sendKickHimOn");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
    // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOn) == 0) {
     Serial.print("Published desiredKickHimOn Message:");
+    Serial.println(kickMsgOn);
+    sendTry = 3;
   } else {
-    Serial.print("desiredKickHimOn Publish failed:");
+    Serial.println("desiredKickHimOn Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
       publishMessageError();
+   }
   }
-  Serial.println(kickMsgOn);
+ }
 }
 
 void sendKickMeOff() {
   Serial.println("Method: sendKickMeOff");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
    // publish the message
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickMsgOff) == 0) {
     Serial.print("Published desiredKickMeOff Message:");
+    Serial.println(kickMsgOff);
+    sendTry = 3;
   } else {
-    Serial.print("desiredKickMeOff Publish failed:");
+    Serial.println("desiredKickMeOff Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
       publishMessageError();
+   }
   }
-  Serial.println(kickMsgOff);
+ }
 }
 
 //-------------------------------------------------------------------------
@@ -429,6 +491,7 @@ void checkArmSwitch() {
         myLastReportedArm =9;
           if (myLastReportedArmError == 10) {
             Serial.println("now going to report my arm error off");
+            delay(1000);
             sendReportArmErrorOff();
             myLastReportedArmError = 9;
               Serial.print("  myLastReportedArmError SHOULD be 9 and is now = ");
@@ -505,19 +568,18 @@ void processServoQueue() {
            servo_14.write(5);
            Serial.println("Self servo has run");
            myServoQueue=9;
-           delay(1000);
+           delay(1000);    // delay for bot to fall
              if (analogRead(ARMBTN_PIN) <1000) {
              Serial.println("No MyKick Errors");
-               // sendReportedKickOn();
-               // myLastReportedKick=10;
-               sendKickMeOff();
-               myLastDesiredKick=9;
         }
          if (analogRead(ARMBTN_PIN) > 4000) {
          sendReportArmErrorOn();
          myLastReportedArmError=10;
+         delay(1500);    // delay between reporting
          Serial.println("There is a MyKick Error"); 
         }
+     sendKickMeOff();
+     myLastDesiredKick=9;
     }
   }
 }
