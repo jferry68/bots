@@ -102,11 +102,13 @@ Servo servo_14;
                           // Establish Global Variables
 int bootUpCheckInState = 9;
 int myLastReportedArm = 9;
-int myLastReportedKick = 9;
 int myLastReportedArmError = 9;
+int myLastDesiredKick = 9;
 int myArmSwitch = 9;
 int hisLastReportedArm = 9;
 int hisLastReportedArmError = 9;
+int hisLastDesiredKick = 9;
+int myServoQueue = 9;
 
 void callBackHandler(char *topicName, int payloadLen, char *payLoad) {
 Serial.println("Method: callBackHandler");
@@ -229,16 +231,15 @@ Serial.println("Method: setup");
 void handleMessageForMe(JsonObject& root) {
 Serial.println("Method: handleMessageForMe");
 
-  Serial.print("  My reported error message: ");
-  int reportedError = root["state"]["reported"]["error"].as<int>();
-    Serial.println(reportedError);
-  if (reportedError == 10) {
-     myLastReportedArmError = 10;
+  Serial.print("  My desired kick message: ");
+  int kickMeMessage = root["state"]["desired"]["kick"].as<int>();
+    Serial.println(kickMeMessage);
+  if (kickMeMessage == 10) {
+     myLastDesiredKick = 10;
   }
-  if (reportedError == 9) {
-     myLastReportedArmError = 9;
+  if (kickMeMessage == 9) {
+     myLastDesiredKick = 9;
   }
-
 }
 
 void handleMessageFromHim(JsonObject& root) {
@@ -265,7 +266,17 @@ Serial.println("Method: handleMessageFromHim");
   if (reportedError == 9) {
      hisLastReportedArmError = 9;
   }
-  
+
+  Serial.print("  His desired kick message: ");
+  int desiredKick = root["state"]["desired"]["kick"].as<int>();
+    if (desiredKick == 10) {
+    hisLastDesiredKick = 10;
+     digitalWrite(REDLIGHT_PIN, HIGH);
+  }
+  if (desiredKick == 9) {
+     hisLastDesiredKick = 9;
+     digitalWrite(REDLIGHT_PIN, LOW);
+  }
 }
 
 void handleMessage(JsonObject& root) {
@@ -353,28 +364,28 @@ void publishMessageError() {
       delay(1000);
 }
 
-void sendReportedKickOn() {
-  Serial.println("Method: sendReportedKickOn");
+void sendKickHimOn() {
+  Serial.println("Method: sendKickHimOn");
    // publish the message
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOn) == 0) {
-    Serial.print("Published MyReportedKickOn Message:");
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[HIM], kickMsgOn) == 0) {
+    Serial.print("Published desiredKickHimOn Message:");
   } else {
-    Serial.print("MyReportedKickOn Publish failed:");
+    Serial.print("desiredKickHimOn Publish failed:");
       publishMessageError();
   }
-  Serial.println(kickReportOn);
+  Serial.println(kickMsgOn);
 }
 
-void sendReportedKickOff() {
-  Serial.println("Method: sendReportedKickOff");
+void sendKickMeOff() {
+  Serial.println("Method: sendKickMeOff");
    // publish the message
-  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickReportOff) == 0) {
-    Serial.print("Published MyReportedKickOff Message:");
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickMsgOff) == 0) {
+    Serial.print("Published desiredKickMeOff Message:");
   } else {
-    Serial.print("MyReportedKickOff Publish failed:");
+    Serial.print("desiredKickMeOff Publish failed:");
       publishMessageError();
   }
-  Serial.println(kickReportOff);
+  Serial.println(kickMsgOff);
 }
 
 //-------------------------------------------------------------------------
@@ -397,8 +408,6 @@ void bootUpCheckIn() {
   Serial.println("  Part2: Publish other resets");
     sendReportArmErrorOff();
       myLastReportedArmError = 9;
-    sendReportedKickOff();
-      myLastReportedKick = 9;
 
   bootUpCheckInState = 10;  
 }
@@ -418,9 +427,6 @@ void checkArmSwitch() {
       if (myLastReportedArm == 10) {
         sendReportArmDown();
         myLastReportedArm =9;
-        Serial.println("My arm just went from up to down");
-        Serial.print("  myLastReportedArmError = ");
-        Serial.println(myLastReportedArmError);
           if (myLastReportedArmError == 10) {
             Serial.println("now going to report my arm error off");
             sendReportArmErrorOff();
@@ -434,13 +440,18 @@ void checkArmSwitch() {
 
 void checkKickButton() {
     Serial.println("Method: checkKickButton");
-    Serial.println("  Just using this now to see if I can read a full subscription string");
       if (digitalRead(KICKBTN_PIN) == HIGH) {
-        Serial.println("  Kick Button is pushed");
-          //insert code here that gets all of HIS shadow values
-      } else {
-        Serial.println("  Kick Button is off");
-      }
+        Serial.println("  Kick Button is being pushed");
+        digitalWrite(REDLIGHT_PIN, HIGH);
+        delay(1000);
+        digitalWrite(REDLIGHT_PIN, LOW);
+          if (hisLastDesiredKick == 9) {
+            if (hisLastReportedArm == 10) {
+              sendKickHimOn();
+              hisLastDesiredKick = 10;
+          }
+        }
+      }      
 }
 
 void processErrors() {
@@ -467,8 +478,50 @@ void processErrors() {
     }
       delay(1000);
     }
-  } 
+  }
 }
+
+void processKickMeRequest() {
+    Serial.println("Method: processKickMeRequest");
+    if (myLastDesiredKick ==10) {
+      if (myServoQueue == 9) {
+        if (myArmSwitch == 10) {
+          if (myLastReportedArmError == 9) {
+            myServoQueue = 10;
+          }
+        }
+      }
+    }
+}
+
+void processServoQueue() {
+  Serial.println("Method: processServoQueue");
+  if (myServoQueue == 10) {
+    if (digitalRead(MOTION_PIN) == HIGH) {
+                Serial.println("Running Self Servo");
+          servo_14.attach(14);
+          servo_14.write(150);
+           delay(500);
+           servo_14.write(5);
+           Serial.println("Self servo has run");
+           myServoQueue=9;
+           delay(1000);
+             if (analogRead(ARMBTN_PIN) <1000) {
+             Serial.println("No MyKick Errors");
+               // sendReportedKickOn();
+               // myLastReportedKick=10;
+               sendKickMeOff();
+               myLastDesiredKick=9;
+        }
+         if (analogRead(ARMBTN_PIN) > 4000) {
+         sendReportArmErrorOn();
+         myLastReportedArmError=10;
+         Serial.println("There is a MyKick Error"); 
+        }
+    }
+  }
+}
+
 
 JsonObject& parseJSON(char *json) {
 
@@ -509,6 +562,12 @@ void loop() {
     
   Serial.println("  Part5: Process Errors");
     processErrors();
+    
+  Serial.println("  Part6: Process Kick Me Request");
+    processKickMeRequest();
+
+  Serial.println("  Part6: Servo Queue");
+    processServoQueue();
 
   delay(POLLING_DELAY); 
 }
