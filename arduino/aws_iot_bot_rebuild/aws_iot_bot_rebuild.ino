@@ -81,7 +81,7 @@ int tick = 0, msgCount = 0, msgReceived = 0;
 char payload[512];
 char rcvdPayload[512];
 char *payloadTopic;
-const char desiredStateFmt[] = "{\"state\":{\"desired\":{\"kick\":%i,\"arm\":%i,\"servo\":%i}}}";
+const char desiredStateFmt[] = "{\"state\":{\"desired\":{\"kick\":%i,\"arm\":%i,\"alive\":%i}}}";
 
 char kickMsgOn[] = "{\"state\":{\"desired\":{\"kick\": 10}}}";
 char kickMsgOff[] = "{\"state\":{\"desired\":{\"kick\": 9}}}";
@@ -91,6 +91,7 @@ char armErrorOn[] = "{\"state\":{\"reported\":{\"error\": 10}}}";
 char armErrorOff[] = "{\"state\":{\"reported\":{\"error\": 9}}}";
 char kickReportOn[] = "{\"state\":{\"reported\":{\"kick\": 10}}}";
 char kickReportOff[] = "{\"state\":{\"reported\":{\"kick\": 9}}}";
+char ImAlive[] = "{\"state\":{\"reported\":{\"alive\": 10}}}";
 
 const int led = 2;
 const int REDLIGHT_PIN = 18;
@@ -110,6 +111,10 @@ int hisLastReportedArm = 9;
 int hisLastReportedArmError = 9;
 int hisLastDesiredKick = 9;
 int myServoQueue = 9;
+int myAliveTimer = 1;
+int hisAliveTimer = 1;
+int hesDeadError=9;
+int hisLastAliveMessage=9;
 
 void callBackHandler(char *topicName, int payloadLen, char *payLoad) {
 Serial.println("Method: callBackHandler");
@@ -279,6 +284,18 @@ Serial.println("Method: handleMessageFromHim");
      hisLastDesiredKick = 9;
      digitalWrite(REDLIGHT_PIN, LOW);
   }
+
+  Serial.print("  His StillAlive message: ");
+  int hisLastAliveMessage = root["state"]["reported"]["alive"].as<int>();
+    Serial.println(hisLastAliveMessage);
+    if (hisAliveTimer>60) {
+      hisAliveTimer=1;
+      Serial.println("reseting hisAliveTimer to 1");
+        if (hesDeadError==10) {
+          hesDeadError=9;
+        }
+    }
+  
 }
 
 void handleMessage(JsonObject& root) {
@@ -318,18 +335,6 @@ void publishMessageError() {
 
 //--Message Sending-----------------------------------------------------------------------
 
-//void sendReportArmUp() {
-//  Serial.println("Method: sendReportArmUp");
-//  // publish the message
-//  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], armMsgOn) == 0) {
-//    Serial.print("Published Arm Up Message:");
-//  } else {
-//    Serial.print("Arm Up Publish failed:");
-//      publishMessageError();
-//  }
-//  Serial.println(armMsgOn);
-//}
-
 void sendReportArmUp() {
   Serial.println("Method: sendReportArmUp");
   for (int sendTry = 1; sendTry < 4; sendTry++) {
@@ -340,6 +345,7 @@ void sendReportArmUp() {
     Serial.print("Published Arm Up Message:");
     Serial.println(armMsgOn);
     sendTry = 3;
+        delay(1000);
   } else {
     Serial.println("Arm Up Publish failed - Trying again ******************************************");
     delay(1000);
@@ -360,6 +366,7 @@ void sendReportArmDown() {
     Serial.print("Published Arm Down Message:");
     Serial.println(armMsgOff);
     sendTry = 3;
+        delay(1000);
   } else {
     Serial.println("Arm Down Publish failed - Trying again ******************************************");
     delay(1000);
@@ -380,6 +387,7 @@ void sendReportArmErrorOn() {
     Serial.print("Published Arm Error On Message:");
     Serial.println(armErrorOn);
     sendTry = 3;
+        delay(1000);
   } else {
     Serial.println("Arm Error On Publish failed - Trying again ******************************************");
     delay(1000);
@@ -400,6 +408,7 @@ void sendReportArmErrorOff() {
     Serial.print("Published Arm Error Off Message:");
     Serial.println(armErrorOff);
     sendTry = 3;
+        delay(1000);
   } else {
     Serial.println("Arm Error Off Publish failed - Trying again ******************************************");
     delay(1000);
@@ -420,6 +429,7 @@ void sendKickHimOn() {
     Serial.print("Published desiredKickHimOn Message:");
     Serial.println(kickMsgOn);
     sendTry = 3;
+        delay(1000);
   } else {
     Serial.println("desiredKickHimOn Publish failed - Trying again ******************************************");
     delay(1000);
@@ -439,9 +449,31 @@ void sendKickMeOff() {
   if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickMsgOff) == 0) {
     Serial.print("Published desiredKickMeOff Message:");
     Serial.println(kickMsgOff);
+        delay(1000);
     sendTry = 3;
   } else {
     Serial.println("desiredKickMeOff Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
+      publishMessageError();
+   }
+  }
+ }
+}
+
+void sendImAlive() {
+  Serial.println("Method: sendImAlive");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
+   // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], ImAlive) == 0) {
+    Serial.print("Published ImAlive Message:");
+    Serial.println(ImAlive);
+        delay(1000);
+    sendTry = 3;
+  } else {
+    Serial.println("ImAlive Publish failed - Trying again ******************************************");
     delay(1000);
       if (sendTry==3) {
       publishMessageError();
@@ -470,7 +502,7 @@ void bootUpCheckIn() {
   Serial.println("  Part2: Publish other resets");
     sendReportArmErrorOff();
       myLastReportedArmError = 9;
-
+    sendImAlive();
   bootUpCheckInState = 10;  
 }
 
@@ -530,7 +562,6 @@ void processErrors() {
       digitalWrite(GRLIGHT_PIN, LOW);
       delay(50);
     }
-      delay(1000);
     }
           if (digitalRead(GRLIGHT_PIN) == HIGH) {
     for (int count = 0; count < 5; count++) {
@@ -539,8 +570,29 @@ void processErrors() {
       digitalWrite(GRLIGHT_PIN, HIGH);
       delay(50);
     }
-      delay(1000);
+   }
+  }
+   
+  // If He has a DeadError
+  if(hesDeadError == 10) {
+    Serial.println("  Processing error blink for HesDeadError");
+       // Blink Red light 5 times to indicate He has a DeadError
+          if (digitalRead(REDLIGHT_PIN) == LOW) {
+    for (int count = 0; count < 5; count++) {
+      digitalWrite(REDLIGHT_PIN, HIGH);
+      delay(50);
+      digitalWrite(REDLIGHT_PIN, LOW);
+      delay(50);
     }
+    }
+          if (digitalRead(REDLIGHT_PIN) == HIGH) {
+    for (int count = 0; count < 5; count++) {
+      digitalWrite(REDLIGHT_PIN, LOW);
+      delay(50);
+      digitalWrite(REDLIGHT_PIN, HIGH);
+      delay(50);
+    }
+   }
   }
 }
 
@@ -579,7 +631,28 @@ void processServoQueue() {
          Serial.println("There is a MyKick Error"); 
         }
      sendKickMeOff();
+         delay(1000);    // delay after reporting
      myLastDesiredKick=9;
+    }
+  }
+}
+
+void aliveTimer() {
+    Serial.println("Method: aliveTimer");
+  myAliveTimer=myAliveTimer+1;
+    Serial.print("myAliveTimer = ");
+    Serial.println(myAliveTimer);
+  hisAliveTimer=hisAliveTimer+1;
+    Serial.print("hisAliveTimer = ");
+    Serial.println(hisAliveTimer);
+  if (myAliveTimer==120) {       //send ImAlive every 2 minutes
+    sendImAlive();
+    Serial.println("Resetting myAliveTimer to 1");
+    myAliveTimer=1;
+  }
+  if (hisAliveTimer>180) {       //check him after 3 minutes
+    if (hesDeadError==9) {
+      hesDeadError=10;
     }
   }
 }
@@ -628,8 +701,11 @@ void loop() {
   Serial.println("  Part6: Process Kick Me Request");
     processKickMeRequest();
 
-  Serial.println("  Part6: Servo Queue");
+  Serial.println("  Part7: Servo Queue");
     processServoQueue();
+    
+  Serial.println("  Part8: Alive Timer");
+    aliveTimer();
 
   delay(POLLING_DELAY); 
 }
