@@ -44,7 +44,6 @@ char* BOT_NAME[2] = {
 };
 
 char HOST_ADDRESS[] = "ac0pct10qk7h9-ats.iot.us-west-2.amazonaws.com";
-char CLIENT_ID[] = "amebaClient";
 
 char* UPDATE_TOPIC[2] = {
   "$aws/things/BotA/shadow/update",
@@ -64,15 +63,19 @@ char* GET_TOPIC[2] = {
 //  "$aws/things/%s/shadow/get/rejected"
 //};
 
-char* SUBSCRIBE_TOPICS[2][2] =
+char* SUBSCRIBE_TOPICS[4][4] =
 {
   {
     "$aws/things/BotA/shadow/update/accepted",
-    "$aws/things/BotA/shadow/update/rejected"
+    "$aws/things/BotA/shadow/update/rejected",
+    "$aws/things/BotA/shadow/get/accepted",
+    "$aws/things/BotA/shadow/get/rejected"
   },
   {
     "$aws/things/BotB/shadow/update/accepted",
-    "$aws/things/BotB/shadow/update/rejected"
+    "$aws/things/BotB/shadow/update/rejected",
+    "$aws/things/BotB/shadow/get/accepted",
+    "$aws/things/BotB/shadow/get/rejected"
   }
 };
 
@@ -84,6 +87,7 @@ char rcvdPayload[512];
 char *payloadTopic;
 const char desiredStateFmt[] = "{\"state\":{\"desired\":{\"kick\":%i,\"arm\":%i,\"servo\":%i}}}";
 char kickMsg[] = "{\"state\":{\"desired\":{\"kick\": 1}}}";
+char getMsg[] = "{}";
 
 const int led = 2;
 Servo servo_14;
@@ -297,6 +301,18 @@ void handleMessage(JsonObject& root) {
     Serial.println("unknown topic");
   }
 
+}
+
+void sendGet() {
+  Serial.println("Sending get...");
+
+  // publish the message
+  if (AWS_CLIENT.publish(GET_TOPIC[HIM], getMsg) == 0) {
+    Serial.print("Published Message:");
+  } else {
+    Serial.print("Publish failed:");
+  }
+  Serial.println(getMsg);
 }
 
 void sendKick() {
