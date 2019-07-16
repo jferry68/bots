@@ -1,5 +1,6 @@
 #include <AWS_IOT.h>
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <ArduinoJson.h>
 #include <Servo.h>
 
@@ -7,25 +8,7 @@
 // Make sure you install the certs/keys where specified!
 
 AWS_IOT AWS_CLIENT;
-
-int NETWORK = 1;
-
-// define possible wifi access points to connect to
-const char* SSIDS[] = {
-  "NETGEAR37",
-  "JKFERRY2",
-  "bighoops",
-  "Engenius"
-};
-
-// corresponding passwords for the wifi access points
-const char* PWDS[] = {
-  "gentleraven032",
-  "f3rryl1nk",
-  "123babe123",
-  "tinker18"
-};
-
+WiFiMulti wifiMulti;
 
 int POLLING_DELAY = 1000;
 
@@ -115,6 +98,7 @@ int myAliveTimer = 1;
 int hisAliveTimer = 1;
 int hesDeadError=9;
 int hisLastAliveMessage=9;
+int wifiTimer=1;
 
 void callBackHandler(char *topicName, int payloadLen, char *payLoad) {
 Serial.println("Method: callBackHandler");
@@ -147,19 +131,21 @@ void whoAmI() {
 }
 
 boolean connectToWiFi() {
-
-  while (status != WL_CONNECTED) {
-    Serial.print("Attempting to connect to SSID: ");
-    Serial.println(SSIDS[NETWORK]);
-    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-    status = WiFi.begin(SSIDS[NETWORK], PWDS[NETWORK]);
-    // wait 5 seconds for connection:
-    delay(5000);
-  }
-
-  Serial.println("Connected to wifi");
-    digitalWrite(led, HIGH);
-  return (status == WL_CONNECTED);
+  Serial.println("Method: connectToWiFi");
+    wifiMulti.addAP("NETGEAR37", "gentleraven032");
+    wifiMulti.addAP("JKFERRY2", "f3rryl1nk");
+    wifiMulti.addAP("bighoops", "123babe123");
+    wifiMulti.addAP("Engenius", "tinker18");
+        
+    Serial.println("Connecting Wifi...");
+    if(wifiMulti.run() == WL_CONNECTED) {
+        Serial.println("");
+        Serial.println("WiFi connected to:");
+        Serial.println(WiFi.SSID());
+        Serial.println("IP address: ");
+        Serial.println(WiFi.localIP());
+        digitalWrite(led, HIGH);
+    }
 }
 
 void subscribeToTopics(int who) {
@@ -295,7 +281,6 @@ Serial.println("Method: handleMessageFromHim");
           hesDeadError=9;
         }
     }
-  
 }
 
 void handleMessage(JsonObject& root) {
@@ -522,11 +507,11 @@ void checkArmSwitch() {
         sendReportArmDown();
         myLastReportedArm =9;
           if (myLastReportedArmError == 10) {
-            Serial.println("now going to report my arm error off");
+            Serial.println("reporting my arm error off");
             delay(1000);
             sendReportArmErrorOff();
             myLastReportedArmError = 9;
-              Serial.print("  myLastReportedArmError SHOULD be 9 and is now = ");
+              Serial.print("  myLastReportedArmError = ");
               Serial.println(myLastReportedArmError);
           }
       }
@@ -650,9 +635,29 @@ void aliveTimer() {
     Serial.println("Resetting myAliveTimer to 1");
     myAliveTimer=1;
   }
-  if (hisAliveTimer>180) {       //check him after 3 minutes
+  if (hisAliveTimer>180) {       //check if hes alive after 3 minutes
     if (hesDeadError==9) {
       hesDeadError=10;
+    }
+  }
+}
+
+void checkWiFi() {
+  Serial.println("Method: checkWiFi");
+  wifiTimer=wifiTimer+1;
+  Serial.print("wifiTimer = ");
+  Serial.println(wifiTimer);
+    if (wifiTimer==60) {
+    wifiTimer=1;   
+      if(wifiMulti.run() != WL_CONNECTED) {
+        Serial.println("WiFi not connected!");
+        digitalWrite(led, LOW);
+        delay(5000);
+        connectToWiFi();
+        whoAmI();
+        connectToAWS();
+      } else {
+    Serial.println("WiFi still connected!");
     }
   }
 }
@@ -670,8 +675,7 @@ JsonObject& parseJSON(char *json) {
   }
 
 void loop() {
-  Serial.println("Method: Main Loop");
-  
+  Serial.println("Method: Main Loop");  
   Serial.println("  Part1: Bootup Check In");
     if (bootUpCheckInState == 10) {
     Serial.println("    Already Bootup Checked in");
@@ -706,6 +710,9 @@ void loop() {
     
   Serial.println("  Part8: Alive Timer");
     aliveTimer();
+
+  Serial.println("  Part9: Check WiFi every minute");
+    checkWiFi();
 
   delay(POLLING_DELAY); 
 }
