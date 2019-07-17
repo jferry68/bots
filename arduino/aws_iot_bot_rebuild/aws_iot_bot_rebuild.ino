@@ -27,7 +27,7 @@ char* BOT_NAME[2] = {
 };
 
 char HOST_ADDRESS[] = "ac0pct10qk7h9-ats.iot.us-west-2.amazonaws.com";
-char CLIENT_ID[] = "amebaClient";
+// char CLIENT_ID[] = "amebaClient";
 
 char* UPDATE_TOPIC[2] = {
   "$aws/things/BotA/shadow/update",
@@ -47,15 +47,19 @@ char* GET_TOPIC[2] = {
 //  "$aws/things/%s/shadow/get/rejected"
 //};
 
-char* SUBSCRIBE_TOPICS[2][2] =
+char* SUBSCRIBE_TOPICS[4][4] =
 {
   {
     "$aws/things/BotA/shadow/update/accepted",
-    "$aws/things/BotA/shadow/update/rejected"
+    "$aws/things/BotA/shadow/update/rejected",
+    "$aws/things/BotA/shadow/get/accepted",            // from merge
+    "$aws/things/BotA/shadow/get/rejected"            // from merge
   },
   {
     "$aws/things/BotB/shadow/update/accepted",
-    "$aws/things/BotB/shadow/update/rejected"
+    "$aws/things/BotB/shadow/update/rejected",
+    "$aws/things/BotB/shadow/get/accepted",            // from merge
+    "$aws/things/BotB/shadow/get/rejected"            // from merge
   }
 };
 
@@ -65,6 +69,7 @@ char payload[512];
 char rcvdPayload[512];
 char *payloadTopic;
 const char desiredStateFmt[] = "{\"state\":{\"desired\":{\"kick\":%i,\"arm\":%i,\"alive\":%i}}}";
+char getMsg[] = "{}";              // from merge
 
 char kickMsgOn[] = "{\"state\":{\"desired\":{\"kick\": 10}}}";
 char kickMsgOff[] = "{\"state\":{\"desired\":{\"kick\": 9}}}";
@@ -149,7 +154,11 @@ boolean connectToWiFi() {
 }
 
 void subscribeToTopics(int who) {
-  for (int i = 0; i < 2; i++) {
+      Serial.print("who = ");
+      Serial.println(who);
+  for (int i = 0; i < 4; i++) {                  //for merge, changed i<2 to i<4
+      Serial.print("count = ");
+      Serial.println(i);
     Serial.print("Subscribing to topic: ");
     Serial.println(SUBSCRIBE_TOPICS[who][i]);
 
@@ -304,6 +313,19 @@ void handleMessage(JsonObject& root) {
   } else {
     Serial.println("unknown topic");
   }
+}
+
+void sendGet() {                               // from merge
+  Serial.println("Sending get...");
+
+  // publish the message
+  if (AWS_CLIENT.publish(GET_TOPIC[HIM], getMsg) == 0) {
+    Serial.print("Published Message:");
+  } else {
+    Serial.print("Publish failed:");
+  }
+  Serial.println(getMsg);
+  delay(5000);
 }
 
 void publishMessageError() {
@@ -488,6 +510,7 @@ void bootUpCheckIn() {
     sendReportArmErrorOff();
       myLastReportedArmError = 9;
     sendImAlive();
+    sendGet();                          // from merge
   bootUpCheckInState = 10;  
 }
 
