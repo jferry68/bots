@@ -1,8 +1,11 @@
+#include <SPI.h>
 #include <AWS_IOT.h>
 #include <WiFi.h>
 #include <WiFiMulti.h>
 #include <ArduinoJson.h>
 #include <Servo.h>
+//#include <Twitter.h>
+
 
 // https://github.com/aws-samples/aws-iot-workshop
 // Make sure you install the certs/keys where specified!
@@ -75,6 +78,7 @@ char armErrorOff[] = "{\"state\":{\"reported\":{\"error\": 9}}}";
 char kickReportOn[] = "{\"state\":{\"reported\":{\"kick\": 10}}}";
 char kickReportOff[] = "{\"state\":{\"reported\":{\"kick\": 9}}}";
 char ImAlive[] = "{\"state\":{\"reported\":{\"alive\": 10}}}";
+char ImAliveStatusRequest[] = "{\"state\":{\"reported\":{\"alive\": 11}}}";
 
 const int led = 2;
 const int REDLIGHT_PIN = 18;
@@ -99,6 +103,10 @@ int hisAliveTimer = 1;
 int hesDeadError=9;
 int hisLastAliveMessage=9;
 int wifiTimer=1;
+int statusAsked=9;
+int gottaTweet=10;
+char tweet[] = "Hello, World! I'm Arduino!";
+//Twitter twitter("1151879073926246401-5sQw81Pi8eluvs1sK3Y31cjI8vtQO8");
 
 void callBackHandler(char *topicName, int payloadLen, char *payLoad) {
 Serial.println("Method: callBackHandler");
@@ -281,6 +289,12 @@ Serial.println("Method: handleMessageFromHim");
           hesDeadError=9;
         }
     }
+    if (hisLastAliveMessage ==11) {
+      statusAsked = 11;
+    }
+    if (hisLastAliveMessage ==10) {
+      statusAsked = 10;
+    }
 }
 
 void handleMessage(JsonObject& root) {
@@ -446,6 +460,27 @@ void sendKickMeOff() {
  }
 }
 
+void sendKickMeOn() {
+  Serial.println("Method: sendKickMeOn");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
+   // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], kickMsgOn) == 0) {
+    Serial.print("Published desiredKickMeOn Message:");
+    Serial.println(kickMsgOn);
+        delay(1000);
+    sendTry = 3;
+  } else {
+    Serial.println("desiredKickMeOn Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
+      publishMessageError();
+   }
+  }
+ }
+}
+
 void sendImAlive() {
   Serial.println("Method: sendImAlive");
   for (int sendTry = 1; sendTry < 4; sendTry++) {
@@ -459,6 +494,27 @@ void sendImAlive() {
     sendTry = 3;
   } else {
     Serial.println("ImAlive Publish failed - Trying again ******************************************");
+    delay(1000);
+      if (sendTry==3) {
+      publishMessageError();
+   }
+  }
+ }
+}
+
+void sendImAliveStatusRequest() {
+  Serial.println("Method: sendImAliveStatusRequest");
+  for (int sendTry = 1; sendTry < 4; sendTry++) {
+    Serial.print("Try number ");
+    Serial.println(sendTry);
+   // publish the message
+  if (AWS_CLIENT.publish(UPDATE_TOPIC[ME], ImAliveStatusRequest) == 0) {
+    Serial.print("Published ImAliveStatusRequest Message:");
+    Serial.println(ImAlive);
+        delay(1000);
+    sendTry = 3;
+  } else {
+    Serial.println("ImAliveStatusRequest Publish failed - Trying again ******************************************");
     delay(1000);
       if (sendTry==3) {
       publishMessageError();
@@ -557,6 +613,10 @@ void processErrors() {
     }
    }
   }
+
+  if (myLastReportedArmError ==10) {
+    Serial.println("I currently have an arm error, Ugh!");
+  }
    
   // If He has a DeadError
   if(hesDeadError == 10) {
@@ -638,9 +698,33 @@ void aliveTimer() {
   if (hisAliveTimer>180) {       //check if hes alive after 3 minutes
     if (hesDeadError==9) {
       hesDeadError=10;
+      hisLastReportedArm=9;          //set his arm value to a reset state
+      hisLastReportedArmError = 9;   //set his armerror value to a reset state
+      hisLastDesiredKick = 9;        //set his desiredkick value to a reset state
     }
   }
 }
+
+void askForHisStatus() {
+    Serial.println("Method: askForHisStatus");
+   sendImAliveStatusRequest(); 
+   statusAsked = 11;
+}
+
+void sendMyStatus() {
+      if (analogRead(ARMBTN_PIN) > 4000) {
+        if (myLastReportedArmError == 9) {
+          sendReportArmUp();
+      }
+     }
+      if (myLastReportedArmError == 10) {
+        sendReportArmErrorOn();
+      }
+      if (myLastDesiredKick == 10) {
+        sendKickMeOn();
+      }
+}
+
 
 void checkWiFi() {
   Serial.println("Method: checkWiFi");
@@ -661,6 +745,25 @@ void checkWiFi() {
     }
   }
 }
+
+//void postToTwitter() {
+//  if(gottaTweet==10) {
+//      Serial.println("connecting ...");
+//  if (twitter.post(tweet)) {
+//    int status = twitter.wait();
+//    if (status == 200) {
+//      Serial.println("OK.");
+//    } else {
+//      Serial.print("failed : code ");
+//      Serial.println(status);
+//    }
+//  } else {
+//    Serial.println("connection failed.");
+//  }
+//  gottaTweet=9;
+//  delay(10000);
+//  }
+//}
 
 
 JsonObject& parseJSON(char *json) {
@@ -683,8 +786,21 @@ void loop() {
   if (bootUpCheckInState == 9) {
     bootUpCheckIn();
   }
+
+  Serial.println("  Part2: Ask him for status");
+    if (statusAsked == 11) {
+    sendMyStatus();
+    sendImAlive();
+    statusAsked = 10;
+  }  
+    if (statusAsked == 10) {
+    Serial.println("    Already Asked");
+  }
+  if (statusAsked == 9) {
+    askForHisStatus();
+  }
    
-  Serial.println("  Part2: Check for callback");
+  Serial.println("  Part3: Check for callback");
   if (msgReceived == 1) {
     msgReceived = 0;
     Serial.print("Received Message:");
@@ -693,26 +809,29 @@ void loop() {
     handleMessage(root);
   }
   
-  Serial.println("  Part3: Check Arm Switch");
+  Serial.println("  Part4: Check Arm Switch");
     checkArmSwitch();
 
-  Serial.println("  Part4: Check Kick Button");
+  Serial.println("  Part5: Check Kick Button");
     checkKickButton();    
     
-  Serial.println("  Part5: Process Errors");
+  Serial.println("  Part6: Process Errors");
     processErrors();
     
-  Serial.println("  Part6: Process Kick Me Request");
+  Serial.println("  Part7: Process Kick Me Request");
     processKickMeRequest();
 
-  Serial.println("  Part7: Servo Queue");
+  Serial.println("  Part8: Servo Queue");
     processServoQueue();
     
-  Serial.println("  Part8: Alive Timer");
+  Serial.println("  Part9: Alive Timer");
     aliveTimer();
 
-  Serial.println("  Part9: Check WiFi every minute");
+  Serial.println("  Part10: Check WiFi every minute");
     checkWiFi();
 
+  Serial.println("  Part11: Post to Twitter");
+//    postToTwitter();
+    
   delay(POLLING_DELAY); 
 }
